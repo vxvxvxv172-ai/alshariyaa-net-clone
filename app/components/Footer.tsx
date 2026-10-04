@@ -136,7 +136,7 @@ export default async function Footer() {
                     <div key={i} className="flex flex-col items-center gap-1 shrink-0">
                       {href ? <a href={href} target="_blank" rel="noreferrer">{img}</a> : <span>{img}</span>}
                       {item.number && (
-                        <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                        <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
                           {item.number}
                         </span>
                       )}
@@ -150,7 +150,7 @@ export default async function Footer() {
                       : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
                     }
                     {number1 && (
-                      <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                      <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
                         {number1}
                       </span>
                     )}
@@ -163,7 +163,7 @@ export default async function Footer() {
                       : <Image src={img2} alt="img2" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
                     }
                     {number2 && (
-                      <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                      <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
                         {number2}
                       </span>
                     )}
