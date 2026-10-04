@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { FiUpload, FiLink, FiExternalLink, FiTrash2 } from "react-icons/fi";
 
-type FooterItem = { _id?: string; image: string; linkType: string; link: string; file: string };
-type Data = { qrImage: string; qrLink: string; qrLinkType: string; qrFile: string; img1: string; link1: string; linkType1: string; file1: string; img2: string; link2: string; linkType2: string; file2: string; footerItems: FooterItem[] };
+type FooterItem = { _id?: string; number: string; image: string; linkType: string; link: string; file: string };
+type Data = { number1: string; number2: string; qrImage: string; qrLink: string; qrLinkType: string; qrFile: string; img1: string; link1: string; linkType1: string; file1: string; img2: string; link2: string; linkType2: string; file2: string; footerItems: FooterItem[] };
 
 export default function FilesPage() {
-  const [data, setData] = useState<Data>({ qrImage: "", qrLink: "", qrLinkType: "link", qrFile: "", img1: "", link1: "", linkType1: "link", file1: "", img2: "", link2: "", linkType2: "link", file2: "", footerItems: [] });
+  const [data, setData] = useState<Data>({ number1: "", number2: "", qrImage: "", qrLink: "", qrLinkType: "link", qrFile: "", img1: "", link1: "", linkType1: "link", file1: "", img2: "", link2: "", linkType2: "link", file2: "", footerItems: [] });
   const [savingSection, setSavingSection] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Record<string, string>>({});
 
@@ -43,11 +43,11 @@ export default function FilesPage() {
     fetch(`/api/admin/company`, { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        const normalize = (item: Partial<FooterItem>): FooterItem => ({ _id: (item as FooterItem & { _id?: string })._id, image: item.image || "", linkType: item.linkType || (item.file ? "file" : "link"), link: item.link || "", file: item.file || "" });
+        const normalize = (item: Partial<FooterItem>): FooterItem => ({ _id: (item as FooterItem & { _id?: string })._id, number: item.number || "", image: item.image || "", linkType: item.linkType || (item.file ? "file" : "link"), link: item.link || "", file: item.file || "" });
         const items = (d.footerItems && d.footerItems.length > 0
           ? d.footerItems
           : [{}, {}, {}]).map(normalize);
-        setData({ qrImage: d.qrImage || "", qrLink: d.qrLink || "", qrLinkType: d.qrLinkType || (d.qrFile ? "file" : "link"), qrFile: d.qrFile || "", img1: d.img1 || "", link1: d.link1 || "", linkType1: d.link1Type || (d.file1 ? "file" : "link"), file1: d.file1 || "", img2: d.img2 || "", link2: d.link2 || "", linkType2: d.link2Type || (d.file2 ? "file" : "link"), file2: d.file2 || "", footerItems: items });
+        setData({ number1: d.number1 || "", number2: d.number2 || "", qrImage: d.qrImage || "", qrLink: d.qrLink || "", qrLinkType: d.qrLinkType || (d.qrFile ? "file" : "link"), qrFile: d.qrFile || "", img1: d.img1 || "", link1: d.link1 || "", linkType1: d.link1Type || (d.file1 ? "file" : "link"), file1: d.file1 || "", img2: d.img2 || "", link2: d.link2 || "", linkType2: d.link2Type || (d.file2 ? "file" : "link"), file2: d.file2 || "", footerItems: items });
       })
       .catch(() => showMsg("load", "❌ فشل تحميل البيانات"));
   }, []);
@@ -371,6 +371,13 @@ export default function FilesPage() {
 
                 {/* رابط أو ملف */}
                 <div className="flex-1 min-w-0 w-full space-y-2">
+                  <label className="w-full text-sm text-gray-600">
+                    الرقم أسفل الصورة
+                    <input type="text" inputMode="numeric" dir="ltr" value={item.number ?? ""}
+                      onChange={(e) => updateItem(i, "number", e.target.value)}
+                      placeholder="اكتب الرقم (اختياري)"
+                      className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </label>
                   <div className="flex gap-4">
                     {["link", "file"].map((t) => (
                       <label key={t} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-600">
@@ -440,7 +447,7 @@ export default function FilesPage() {
           <h2 className="text-sm font-semibold text-gray-600"> مركز الاعمال السعودي</h2>
           <div className="flex items-center gap-2">
             {msgs["s1"] && <span className={`text-xs px-2 py-1 rounded-lg font-medium ${msgs["s1"].includes("✅") ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>{msgs["s1"]}</span>}
-            <button onClick={() => saveSection("s1", { link1: data.link1, link1Type: data.linkType1, file1: data.file1 })} disabled={savingSection === "s1"}
+            <button onClick={() => saveSection("s1", { link1: data.link1, link1Type: data.linkType1, file1: data.file1, number1: data.number1 })} disabled={savingSection === "s1"}
               className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
               {savingSection === "s1" ? "جاري..." : "حفظ"}
             </button>
@@ -476,6 +483,13 @@ export default function FilesPage() {
             )}
           </div>
           <div className="flex-1 min-w-0 w-full space-y-2">
+            <label className="block text-sm text-gray-600">
+              الرقم أسفل الصورة
+              <input type="text" inputMode="numeric" dir="ltr" value={data.number1}
+                onChange={(e) => setData((p) => ({ ...p, number1: e.target.value }))}
+                placeholder="اكتب الرقم (اختياري)"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
             <div className="flex gap-4">
               {["link", "file"].map((t) => (
                 <label key={t} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-600">
@@ -537,7 +551,7 @@ export default function FilesPage() {
           <h2 className="text-sm font-semibold text-gray-600"> ضريبه القيمه المضافه</h2>
           <div className="flex items-center gap-2">
             {msgs["s2"] && <span className={`text-xs px-2 py-1 rounded-lg font-medium ${msgs["s2"].includes("✅") ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>{msgs["s2"]}</span>}
-            <button onClick={() => saveSection("s2", { link2: data.link2, link2Type: data.linkType2, file2: data.file2 })} disabled={savingSection === "s2"}
+            <button onClick={() => saveSection("s2", { link2: data.link2, link2Type: data.linkType2, file2: data.file2, number2: data.number2 })} disabled={savingSection === "s2"}
               className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
               {savingSection === "s2" ? "جاري..." : "حفظ"}
             </button>
@@ -573,6 +587,13 @@ export default function FilesPage() {
             )}
           </div>
           <div className="flex-1 min-w-0 w-full space-y-2">
+            <label className="block text-sm text-gray-600">
+              الرقم أسفل الصورة
+              <input type="text" inputMode="numeric" dir="ltr" value={data.number2}
+                onChange={(e) => setData((p) => ({ ...p, number2: e.target.value }))}
+                placeholder="اكتب الرقم (اختياري)"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
             <div className="flex gap-4">
               {["link", "file"].map((t) => (
                 <label key={t} className="flex items-center gap-1.5 cursor-pointer text-sm text-gray-600">

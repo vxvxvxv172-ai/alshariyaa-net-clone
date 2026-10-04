@@ -19,12 +19,18 @@ export default async function Footer() {
   const qrLinkType: string = c.qrFile ? "file" : (c.qrLinkType || "link");
   const qrLink: string = qrLinkType === "file" ? toInlineUrl(c.qrFile || "") : ensureAbsolute(c.qrLink || "");
 
-  const footerItems: { image: string; linkType: string; link: string; file: string }[] =
+  const footerItems: { number?: string; image: string; linkType: string; link: string; file: string }[] =
     (c.footerItems || []).filter((item: { image: string }) => item.image);
 
   const img1: string = c.img1 || "";
   const linkType1: string = c.file1 ? "file" : (c.link1Type || c.linkType1 || "link");
   const link1: string = linkType1 === "file" ? toInlineUrl(c.file1 || "") : ensureAbsolute(c.link1 || "");
+  const number1: string = c.number1 || "";
+
+  const img2: string = c.img2 || "";
+  const linkType2: string = c.file2 ? "file" : (c.link2Type || c.linkType2 || "link");
+  const link2: string = linkType2 === "file" ? toInlineUrl(c.file2 || "") : ensureAbsolute(c.link2 || "");
+  const number2: string = c.number2 || "";
 
   function getHref(item: { linkType: string; link: string; file: string }) {
     if (item.file) return toInlineUrl(item.file);
@@ -32,7 +38,7 @@ export default async function Footer() {
     return "";
   }
 
-  const hasImages = qrSrc || footerItems.length > 0 || img1; // || true; // VAT certificate is always shown
+  const hasImages = qrSrc || footerItems.length > 0 || img1 || img2;
 
   return (
     <footer dir="rtl" className="mt-16 border-t border-gray-200" style={{ background: "#F3F4F6" }}>
@@ -112,41 +118,57 @@ export default async function Footer() {
             </ul>
 
             {hasImages && (
-              <div className="flex gap-2 items-center flex-wrap mt-1">
+              <div className="flex gap-3 items-end flex-wrap mt-1">
                 {qrSrc && (
-                  qrLink
-                    ? <a href={qrLink} target="_blank" rel="noreferrer" className="shrink-0">
-                        <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
-                      </a>
-                    : <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 shrink-0 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    {qrLink
+                      ? <a href={qrLink} target="_blank" rel="noreferrer">
+                          <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
+                        </a>
+                      : <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
+                    }
+                  </div>
                 )}
                 {footerItems.map((item, i) => {
                   const href = getHref(item);
-                  const el = <Image key={i} src={item.image} alt={`footer-item-${i}`} width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />;
-                  return href
-                    ? <a key={i} href={href} target="_blank" rel="noreferrer" className="shrink-0">{el}</a>
-                    : <span key={i} className="shrink-0">{el}</span>;
+                  const img = <Image key={i} src={item.image} alt={`footer-item-${i}`} width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1 shrink-0">
+                      {href ? <a href={href} target="_blank" rel="noreferrer">{img}</a> : <span>{img}</span>}
+                      {item.number && (
+                        <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                          {item.number}
+                        </span>
+                      )}
+                    </div>
+                  );
                 })}
-                {img1 && (link1
-                  ? <a href={link1} target="_blank" rel="noreferrer" className="shrink-0"><Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" /></a>
-                  : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg shrink-0 h-auto w-auto max-h-20 md:max-h-24" />
+                {img1 && (
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    {link1
+                      ? <a href={link1} target="_blank" rel="noreferrer"><Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" /></a>
+                      : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
+                    }
+                    {number1 && (
+                      <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                        {number1}
+                      </span>
+                    )}
+                  </div>
                 )}
-                {/* 
-                <a
-                  href="/شهادة تسجيل جديد في ضريبة القيمة المضافةPDF_260920_203336.pdf"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0"
-                >
-                  <Image
-                    src="/شعار ضريبة القيمة المضافة بدقة عالية svg - png (1).png"
-                    alt="شهادة ضريبة القيمة المضافة"
-                    width={200}
-                    height={200}
-                    className="rounded-lg h-auto w-auto max-h-20 md:max-h-24"
-                  />
-                </a>
-                */}
+                {img2 && (
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    {link2
+                      ? <a href={link2} target="_blank" rel="noreferrer"><Image src={img2} alt="img2" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" /></a>
+                      : <Image src={img2} alt="img2" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
+                    }
+                    {number2 && (
+                      <span dir="ltr" className="block text-[10px] leading-4 font-medium tabular-nums text-gray-500 break-all text-center max-w-[65px]">
+                        {number2}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
