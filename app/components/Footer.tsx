@@ -146,8 +146,8 @@ export default async function Footer() {
                 {img1 && (
                   <div className="flex flex-col items-center gap-1 shrink-0">
                     {link1
-                      ? <a href={link1} target="_blank" rel="noreferrer"><Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" /></a>
-                      : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
+                      ? <a href={link1} target="_blank" rel="noreferrer"><Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-32 md:max-h-40" /></a>
+                      : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-32 md:max-h-40" />
                     }
                     {number1 && (
                       <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
