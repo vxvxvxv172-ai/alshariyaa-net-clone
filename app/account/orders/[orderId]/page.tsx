@@ -269,14 +269,25 @@ export default function OrderDetailPage() {
           </span>
         </header>
 
-        <section aria-labelledby="tracking-title" className="mb-6 rounded-2xl border border-[#284064]/10 bg-white p-5 sm:p-7">
+        <section aria-labelledby="tracking-title" className={`mb-6 rounded-2xl border p-5 sm:p-7 ${order.status === "cancelled" ? "border-red-200 bg-gradient-to-b from-red-50/70 to-white" : "border-[#284064]/10 bg-white"}`}>
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F6F8FC] text-[#60758E]">
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${order.status === "cancelled" ? "bg-red-100 text-red-600" : "bg-[#F6F8FC] text-[#60758E]"}`}>
               {order.status === "cancelled" ? <CircleAlert className="h-5 w-5" /> : <Truck className="h-5 w-5" />}
             </span>
-            <div>
-              <h2 id="tracking-title" className="text-base font-bold">تتبع طلبك</h2>
-              <p className="mt-1 text-sm leading-7 text-[#60758E]" role="status">{STATUS_DESCRIPTION[order.status]}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 id="tracking-title" className={`text-base font-bold ${order.status === "cancelled" ? "text-red-900" : ""}`}>
+                  {order.status === "cancelled" ? "تم إلغاء هذا الطلب" : "تتبع طلبك"}
+                </h2>
+                {order.status === "cancelled" && (
+                  <span className="bg-red-100 text-red-700 border border-red-200 text-xs font-bold px-2 py-0.5 rounded-full">
+                    ملغي من قبل الإدارة
+                  </span>
+                )}
+              </div>
+              <p className={`mt-1 text-sm leading-7 ${order.status === "cancelled" ? "text-red-700" : "text-[#60758E]"}`} role="status">
+                {STATUS_DESCRIPTION[order.status]}
+              </p>
             </div>
           </div>
           {order.status !== "cancelled" && (
@@ -302,19 +313,37 @@ export default function OrderDetailPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-6">
             <Section title="المنتجات" icon={ShoppingBag}>
+              {order.status === "cancelled" && (
+                <div className="mb-4 bg-red-50 border border-red-200/80 rounded-xl p-3 flex items-center gap-2 text-red-700 text-xs font-bold">
+                  <CircleAlert className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>تم إلغاء منتجات هذا الطلب من قبل الإدارة</span>
+                </div>
+              )}
               <div className="divide-y divide-[#284064]/[0.07]">
                 {items.map((item, i) => {
                   const imgUrl = resolveImg(item.image);
                   return (
                     <div key={i} className="flex items-start gap-4 py-4 first:pt-1 last:pb-0">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#284064]/[0.06] bg-[#F6F8FC] sm:h-20 sm:w-20">
+                      <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#284064]/[0.06] bg-[#F6F8FC] sm:h-20 sm:w-20">
                         {imgUrl ? <Image src={imgUrl} alt={item.name} width={80} height={80} className="h-full w-full object-contain p-2" loading="lazy" unoptimized /> : <Package className="h-7 w-7 text-[#8BA8D2]" aria-hidden="true" />}
+                        {order.status === "cancelled" && (
+                          <div className="absolute inset-x-0 bottom-0 bg-red-600 text-white text-[9px] font-bold text-center py-0.5">
+                            ملغي
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold leading-7">{item.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-semibold leading-7 ${order.status === "cancelled" ? "line-through text-gray-400" : ""}`}>{item.name}</p>
+                          {order.status === "cancelled" && (
+                            <span className="bg-red-100 text-red-700 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              تم الإلغاء
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                           <p className="text-xs text-[#60758E]">الكمية: {item.quantity} <span className="mx-1.5 text-[#8BA8D2]">·</span> {fmtMoney(item.price)} ر.س للقطعة</p>
-                          <p className="text-sm font-bold tabular-nums">{fmtMoney(item.price * item.quantity)} <span className="text-xs font-normal text-[#60758E]">ر.س</span></p>
+                          <p className={`text-sm font-bold tabular-nums ${order.status === "cancelled" ? "line-through text-gray-400" : ""}`}>{fmtMoney(item.price * item.quantity)} <span className="text-xs font-normal text-[#60758E]">ر.س</span></p>
                         </div>
                       </div>
                     </div>
