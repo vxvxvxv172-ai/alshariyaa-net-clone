@@ -2,43 +2,48 @@ import Image from "next/image";
 import { FaWhatsapp, FaMobileAlt, FaEnvelope } from "react-icons/fa";
 import { getCompany } from "../lib/getCompany";
 
+function ensureAbsolute(url: string) {
+  if (!url) return "";
+  return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+}
+
+function footerImageUrl(src: string) {
+  if (!src) return "";
+  if (!src.startsWith("https://res.cloudinary.com/")) return src;
+  return src.replace("/image/upload/", "/image/upload/e_trim/");
+}
+
+function toInlineUrl(url: string) {
+  if (!url) return url;
+  const rawUrl = url.replace("/image/upload/", "/raw/upload/").replace(/\/fl_attachment:[^/]+\//, "/");
+  return `https://docs.google.com/viewer?url=${encodeURIComponent(rawUrl)}&embedded=false`;
+}
+
 export default async function Footer() {
   const c = await getCompany();
-
-  function ensureAbsolute(url: string) {
-    if (!url) return "";
-    return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
-  }
-
-  function toInlineUrl(url: string) {
-    if (!url) return "";
-    return `/file-view?url=${encodeURIComponent(url)}`;
-  }
-
-  const qrSrc: string = c.qrImage || "";
-  const qrLinkType: string = c.qrFile ? "file" : (c.qrLinkType || "link");
-  const qrLink: string = qrLinkType === "file" ? toInlineUrl(c.qrFile || "") : ensureAbsolute(c.qrLink || "");
 
   const footerItems: { number?: string; image: string; linkType: string; link: string; file: string }[] =
     (c.footerItems || []).filter((item: { image: string }) => item.image);
 
   const img1: string = c.img1 || "";
-  const linkType1: string = c.file1 ? "file" : (c.link1Type || c.linkType1 || "link");
-  const link1: string = linkType1 === "file" ? toInlineUrl(c.file1 || "") : ensureAbsolute(c.link1 || "");
-  const number1: string = c.number1 || "";
+  const useFile1 = c.link1Type === "file" || (!!(c.file1 || "").trim() && !(c.link1 || "").trim());
+  const link1: string = useFile1 ? toInlineUrl(c.file1 || "") : ensureAbsolute(c.link1 || "");
 
   const img2: string = c.img2 || "";
-  const linkType2: string = c.file2 ? "file" : (c.link2Type || c.linkType2 || "link");
-  const link2: string = linkType2 === "file" ? toInlineUrl(c.file2 || "") : ensureAbsolute(c.link2 || "");
-  const number2: string = c.number2 || "";
+  const useFile2 = c.link2Type === "file" || (!!(c.file2 || "").trim() && !(c.link2 || "").trim());
+  const link2: string = useFile2 ? toInlineUrl(c.file2 || "") : ensureAbsolute(c.link2 || "");
 
   function getHref(item: { linkType: string; link: string; file: string }) {
-    if (item.file) return toInlineUrl(item.file);
-    if (item.linkType === "link" && item.link) return ensureAbsolute(item.link);
-    return "";
+    const asFile = item.linkType === "file" || (!!(item.file || "").trim() && !(item.link || "").trim());
+    return asFile ? toInlineUrl(item.file) : ensureAbsolute(item.link);
   }
 
-  const hasImages = qrSrc || footerItems.length > 0 || img1 || img2;
+  const paymentImages = [
+    ...(c.qrImage ? [{ src: c.qrImage, href: ensureAbsolute(c.qrLink || ""), number: "" }] : []),
+    ...(img1 ? [{ src: img1, href: link1, number: c.number1 || "" }] : []),
+    ...(img2 ? [{ src: img2, href: link2, number: c.number2 || "" }] : []),
+    ...footerItems.map((item) => ({ src: item.image, href: getHref(item), number: item.number || "" })),
+  ];
 
   return (
     <footer dir="rtl" className="mt-16 border-t border-gray-200" style={{ background: "#F3F4F6" }}>
@@ -46,7 +51,7 @@ export default async function Footer() {
       <div className="max-w-6xl mx-auto px-5 pt-12 pb-8">
 
         {/* Main grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
 
           {/* Brand */}
           <div className="flex flex-col gap-4">
@@ -54,27 +59,6 @@ export default async function Footer() {
             <p className="text-sm leading-7 text-gray-600 whitespace-pre-line">
               {c.details || "الشريحة الموثوقة - شرائح اتصال وإنترنت بأسعار منافسة، مع خدمة سريعة وآمنة ودعم عملاء مميز. ثقتكم غايتنا وخدمتكم أولويتنا"}
             </p>
-            {/* 
-            <div className="flex flex-col gap-2">
-              <a href="https://qr.saudibusiness.gov.sa/viewcr?nCrNumber=ZWAcF0Nm56G7jKRA+f4WCw==" target="_blank" rel="noreferrer"
-                className="flex items-center gap-2 group">
-                <Image src="/commerce.webp" alt="سجل تجاري" width={36} height={36} className="object-contain rounded-md shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-black group-hover:underline">السجل التجاري</span>
-                  <span className="text-xs text-gray-500 font-mono">7055249325</span>
-                </div>
-              </a>
-             <a href="https://eauthenticate.saudibusiness.gov.sa/inquiry" target="_blank" rel="noreferrer"
-                className="flex items-center gap-2 group">
-                <Image src="/work.webp" alt="شهادة توثيق" width={36} height={36} className="object-contain rounded-md shrink-0" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-black group-hover:underline">شهادة توثيق</span>
-                  <span className="text-xs text-gray-500">مركز الاعمال</span>
-                  <span className="text-xs text-gray-500 font-mono">0000328458</span>
-                </div>
-              </a>
-            </div>
-            */}
           </div>
 
           {/* Contact details */}
@@ -116,63 +100,30 @@ export default async function Footer() {
                 </li>
               )}
             </ul>
-
-            {hasImages && (
-              <div className="flex gap-3 items-end flex-wrap mt-1">
-                {qrSrc && (
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    {qrLink
-                      ? <a href={qrLink} target="_blank" rel="noreferrer">
-                          <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
-                        </a>
-                      : <Image src={qrSrc} alt="qr" width={200} height={200} className="rounded-lg bg-white p-1 h-auto w-auto max-h-20 md:max-h-24 border border-gray-200" />
-                    }
-                  </div>
-                )}
-                {footerItems.map((item, i) => {
-                  const href = getHref(item);
-                  const img = <Image key={i} src={item.image} alt={`footer-item-${i}`} width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />;
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-1 shrink-0">
-                      {href ? <a href={href} target="_blank" rel="noreferrer">{img}</a> : <span>{img}</span>}
-                      {item.number && (
-                        <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
-                          {item.number}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-                {img1 && (
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    {link1
-                      ? <a href={link1} target="_blank" rel="noreferrer"><Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-32 md:max-h-40" /></a>
-                      : <Image src={img1} alt="img1" width={200} height={200} className="rounded-lg h-auto w-auto max-h-32 md:max-h-40" />
-                    }
-                    {number1 && (
-                      <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
-                        {number1}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {img2 && (
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    {link2
-                      ? <a href={link2} target="_blank" rel="noreferrer"><Image src={img2} alt="img2" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" /></a>
-                      : <Image src={img2} alt="img2" width={200} height={200} className="rounded-lg h-auto w-auto max-h-20 md:max-h-24" />
-                    }
-                    {number2 && (
-                      <span dir="ltr" className="block text-xs leading-5 font-semibold tabular-nums text-gray-600 break-all text-center max-w-[80px]">
-                        {number2}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
+
+        {/* Payment / Certification Images */}
+        {paymentImages.length > 0 && (
+          <div className="mt-5 mb-6 flex flex-wrap items-start justify-center gap-x-5 gap-y-4 sm:justify-end">
+            {paymentImages.map(({ src, href, number }, i) => (
+              <div key={i} className="flex w-[65px] shrink-0 flex-col items-center gap-1.5 text-center">
+                {href ? (
+                  <a href={href} target="_blank" rel="noreferrer" className="shrink-0">
+                    <Image src={footerImageUrl(src)} alt={`وسيلة توثيق ${i + 1}`} width={65} height={40} className="object-contain" style={{ width: 65, height: 40 }} />
+                  </a>
+                ) : (
+                  <Image src={footerImageUrl(src)} alt={`وسيلة توثيق ${i + 1}`} width={65} height={40} className="object-contain shrink-0" style={{ width: 65, height: 40 }} />
+                )}
+                {number && (
+                  <span dir="ltr" className="block w-full break-all text-[10px] leading-4 font-medium tabular-nums text-gray-500">
+                    {number}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Divider */}
         <div className="h-px w-full bg-gray-200 mb-6" />
@@ -190,7 +141,6 @@ export default async function Footer() {
             <Image src="/Apple-Pay-01.png" alt="apple pay" width={56} height={36} className="object-contain" style={{ height: "36px", width: "auto" }} />
             <Image src="/work.webp" alt="salla" width={36} height={24} className="object-contain" style={{ height: "24px", width: "auto" }} />
             <Image src="/commerce.webp" alt="salla" width={36} height={24} className="object-contain" style={{ height: "24px", width: "auto" }} />
-
           </div>
         </div>
       </div>

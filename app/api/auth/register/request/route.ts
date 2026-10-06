@@ -29,11 +29,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" }, { status: 400 });
     }
 
+    // Forward the real client IP so the backend rate-limiter buckets per user, not per BFF server
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
     const backendRes = await fetch(`${BACKEND}/api/customers/auth/register/request`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
+        "x-forwarded-for": clientIp,
       },
       body: JSON.stringify({ email, firstName, lastName, phone, password }),
     });
@@ -58,9 +65,14 @@ export async function POST(req: NextRequest) {
         subject: "رمز التحقق لإنشاء حسابك",
         html: otpEmailTemplate(otp),
       });
-    } catch (emailErr) {
-      console.error("register/request sendEmail error:", emailErr);
-      return NextResponse.json({ error: "فشل إرسال بريد التحقق" }, { status: 500 });
+    } catch (emailErr: unknown) {
+      const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
+      console.error("register/request sendEmail error:", msg);
+      // Return the Resend error message in non-production for easier debugging
+      return NextResponse.json(
+        { error: "فشل إرسال بريد التحقق", detail: process.env.NODE_ENV !== "production" ? msg : undefined },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

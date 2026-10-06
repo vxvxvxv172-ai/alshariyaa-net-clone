@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   if (!res.ok) return new NextResponse("failed", { status: res.status });
 
   const body = await res.arrayBuffer();
-  const contentType = res.headers.get("content-type") || "application/pdf";
+  let contentType = res.headers.get("content-type") || "application/pdf";
+  if (!contentType || contentType === "application/octet-stream") {
+    contentType = "application/pdf";
+  }
 
   return new NextResponse(body, {
     headers: {
