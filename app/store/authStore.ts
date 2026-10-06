@@ -62,18 +62,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const cached = get().user ?? readCache();
     if (!get().initialized) set({ user: cached, loading: true });
     try {
-      // Always consult the server: a missing local cache does not mean a missing cookie.
-      const res = await fetch("/api/auth/me", { cache: "no-store", signal: AbortSignal.timeout(12000) });
+      // Consult the server session
+      const res = await fetch("/api/auth/me", { cache: "no-store", signal: AbortSignal.timeout(7000) });
       if (!res.ok) throw new Error("session unavailable");
       const data = await res.json();
-      if (typeof data.authenticated !== "boolean" || (data.authenticated && !data.user)) throw new Error("invalid session response");
+      if (typeof data.authenticated !== "boolean") throw new Error("invalid session response");
       if (requestRevision !== revision) return;
-      const user = data.authenticated ? data.user as AuthUser : null;
+      const user = data.authenticated && data.user ? (data.user as AuthUser) : null;
       writeCache(user);
       set({ user, loading: false, initialized: true, sessionError: "" });
     } catch {
       if (requestRevision !== revision) return;
-      set({ user: cached, loading: false, initialized: true, sessionError: "تعذر التحقق من اتصال حسابك. سنعيد المحاولة تلقائيًا." });
+      // Do not resurrect stale cache if user was logged out
+      const fallbackUser = get().user;
+      set({ user: fallbackUser, loading: false, initialized: true, sessionError: fallbackUser ? "تعذر التحقق من اتصال حسابك. سنعيد المحاولة تلقائيًا." : "" });
     } finally {
       checking = false;
       if (pendingCheck) { pendingCheck = false; void get().fetchMe(true); }
@@ -81,19 +83,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   logout: async () => {
     if (get().loggingOut) return;
-    revision++; // Ignore any session response that started before logout.
+    revision++; // Invalidate any session response started before logout
     set({ loggingOut: true });
+    // Reset local state immediately so user sees logged-out UI instantaneously
+    writeCache(null);
+    clearDrafts();
+    set({ user: null, initialized: true, loading: false, sessionError: "" });
     try {
-      const res = await fetch("/api/auth/logout", { method: "POST", signal: AbortSignal.timeout(10000) });
-      if (!res.ok) throw new Error("logout failed");
-      const data = await res.json();
-      if (!data.ok) throw new Error("logout failed");
-      writeCache(null);
-      clearDrafts();
-      set({ user: null, initialized: true, loading: false, sessionError: "" });
-    } catch {
-      throw new Error("تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.");
-    } finally { set({ loggingOut: false }); }
+      await fetch("/api/auth/logout", { method: "POST", signal: AbortSignal.timeout(4000) }).catch(() => {});
+    } finally {
+      set({ loggingOut: false });
+    }
   },
 }));
 

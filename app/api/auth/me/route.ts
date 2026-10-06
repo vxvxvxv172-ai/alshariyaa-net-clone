@@ -4,9 +4,10 @@ const BACKEND = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "h
 
 export async function GET(req: NextRequest) {
   try {
-    // If no customer token cookie exists, user is definitely not authenticated
-    // Return early to eliminate unnecessary backend requests & active CPU
-    if (!req.cookies.has("customer_token")) {
+    // If customer token cookie is missing or empty, user is definitely unauthenticated
+    // Return immediately to avoid slow backend network calls
+    const token = req.cookies.get("customer_token")?.value;
+    if (!token || !token.trim()) {
       return NextResponse.json({ authenticated: false }, { status: 200 });
     }
 

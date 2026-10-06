@@ -22,18 +22,66 @@ interface OrderTrackerProps {
 
 export function OrderTracker({ status, orderId, compact = false }: OrderTrackerProps) {
   if (status === "cancelled") {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 text-right" dir="rtl">
-        <div className="flex items-center gap-2 text-red-600 font-bold text-sm">
-          <XCircle className="w-5 h-5 shrink-0" />
-          <span>تم إلغاء هذا الطلب</span>
+    if (compact) {
+      return (
+        <div className="w-full bg-red-50/70 border border-red-200/80 rounded-xl p-3" dir="rtl">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+              <span className="text-xs font-black text-red-700">
+                حالة الطلب: <span className="text-red-600 font-bold">تم إلغاء الطلب</span>
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-red-500 bg-red-100/80 px-2 py-0.5 rounded-full">
+              ملغي
+            </span>
+          </div>
+          <div className="w-full bg-red-100 h-1.5 rounded-full overflow-hidden">
+            <div className="h-full bg-red-500 w-full rounded-full" />
+          </div>
         </div>
-        <p className="text-xs text-red-500 mt-1 mr-7">
-          إذا كانت لديك أي استفسارات، يرجى التواصل مع خدمة العملاء عبر الواتساب.
-        </p>
+      );
+    }
+
+    return (
+      <div className="w-full bg-gradient-to-b from-red-50/50 to-white border border-red-200 rounded-2xl p-4 sm:p-5 shadow-xs" dir="rtl">
+        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-red-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <XCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-red-900">تتبع حالة الطلب</h4>
+              {orderId && (
+                <p className="text-[11px] text-red-400 font-mono" dir="ltr">
+                  #{orderId}
+                </p>
+              )}
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 bg-red-100 text-red-700 border border-red-200 px-3 py-1 rounded-full text-xs font-bold">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            تم إلغاء الطلب
+          </span>
+        </div>
+
+        <div className="bg-red-50 border border-red-200/80 rounded-xl p-3.5 text-right">
+          <div className="flex items-start gap-2.5">
+            <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-red-800">
+                تم إلغاء هذا الطلب من قبل الإدارة
+              </p>
+              <p className="text-xs text-red-600 mt-1 leading-relaxed">
+                تم إيقاف معالجة هذا الطلب. إذا كان لديك استفسار أو ترغب في إعادة الطلب أو الاستبدال، يرجى التواصل مع فريق خدمة العملاء عبر الواتساب.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
+
 
   // 4 main stages for customers:
   // 1. Pending (قيد المراجعة والتدقيق)

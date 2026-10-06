@@ -143,18 +143,30 @@ function OrderCard({ order }: { order: Order }) {
         {/* Products and Total */}
         <div className="p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-xl bg-[#f4f5f7] border border-[#ebebeb] flex items-center justify-center shrink-0">
+            <div className="relative w-12 h-12 rounded-xl bg-[#f4f5f7] border border-[#ebebeb] flex items-center justify-center shrink-0 overflow-hidden">
               {imgUrl ? (
                 <Image src={imgUrl} alt={firstItem?.name ?? "منتج"} width={48} height={48}
                   className="object-contain w-full h-full p-1 rounded-lg" loading="lazy" unoptimized />
               ) : (
                 <ShoppingBag className="w-5 h-5 text-gray-400" />
               )}
+              {order.status === "cancelled" && (
+                <div className="absolute inset-x-0 bottom-0 bg-red-600 text-white text-[8px] font-black text-center py-0.5">
+                  ملغي
+                </div>
+              )}
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-bold text-[#0A1C29] truncate">
-                {firstItem?.name || "طلب شريحة / باقة"}
-              </p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className={`text-xs sm:text-sm font-bold ${order.status === "cancelled" ? "line-through text-gray-400" : "text-[#0A1C29]"} truncate`}>
+                  {firstItem?.name || "طلب شريحة / باقة"}
+                </p>
+                {order.status === "cancelled" && (
+                  <span className="inline-flex items-center text-[10px] font-black bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded shrink-0">
+                    تم إلغاء المنتج
+                  </span>
+                )}
+              </div>
               {order.items && order.items.length > 1 && (
                 <p className="text-[11px] text-gray-400">
                   + {order.items.length - 1} منتجات أخرى
@@ -165,7 +177,7 @@ function OrderCard({ order }: { order: Order }) {
           </div>
 
           <div className="text-left shrink-0">
-            <span className="text-base font-black text-[#0A1C29] tabular-nums" dir="ltr">
+            <span className={`text-base font-black ${order.status === "cancelled" ? "text-gray-400 line-through" : "text-[#0A1C29]"} tabular-nums`} dir="ltr">
               {fmtMoney(order.total)} <span className="text-xs font-semibold text-gray-400">ر.س</span>
             </span>
             <div className="text-[11px] font-bold text-[#0A1C29] underline underline-offset-2 mt-1">
@@ -234,10 +246,10 @@ function AccountPageInner() {
   // Only redirect to login if on "profile" tab and not logged in!
   // If tab is "orders", guests can stay and track their orders!
   useEffect(() => {
-    if (initialized && !loading && !sessionError && !user && tab === "profile") {
+    if (initialized && !loading && !loggingOut && !sessionError && !user && tab === "profile") {
       router.replace("/auth?redirect=/account");
     }
-  }, [initialized, loading, sessionError, user, tab, router]);
+  }, [initialized, loading, loggingOut, sessionError, user, tab, router]);
 
   useEffect(() => {
     if (user) {
@@ -456,8 +468,12 @@ function AccountPageInner() {
 
   const handleLogout = async () => {
     setLogoutError("");
-    try { await logout(); router.replace("/"); }
-    catch (error) { setLogoutError(error instanceof Error ? error.message : "تعذر تسجيل الخروج"); }
+    try {
+      await logout();
+      window.location.href = "/";
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : "تعذر تسجيل الخروج");
+    }
   };
 
   if (!initialized || loading)
