@@ -17,16 +17,18 @@ export async function GET(req: NextRequest) {
         cookie,
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
       },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(10000),
     });
 
-    if (!backendRes.ok) {
+    if (backendRes.status === 401) {
       return NextResponse.json({ authenticated: false }, { status: 200 });
     }
+
+    if (!backendRes.ok) return NextResponse.json({ error: "تعذر التحقق من الجلسة، حاول مرة أخرى" }, { status: 503 });
 
     const data = await backendRes.json();
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json({ authenticated: false }, { status: 200 });
+    return NextResponse.json({ error: "تعذر الاتصال للتحقق من الجلسة" }, { status: 503 });
   }
 }

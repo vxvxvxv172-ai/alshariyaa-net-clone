@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { User, LogOut, ShoppingBag } from "lucide-react";
 import { useAuthStore, AuthUser } from "../../store/authStore";
@@ -11,7 +11,8 @@ interface AccountDropdownProps {
 }
 
 export default function AccountDropdown({ user, onClose }: AccountDropdownProps) {
-  const { logout } = useAuthStore();
+  const { logout, loggingOut } = useAuthStore();
+  const [error, setError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,8 +28,9 @@ export default function AccountDropdown({ user, onClose }: AccountDropdownProps)
     : "حسابي";
 
   const handleLogout = async () => {
-    onClose();
-    await logout();
+    setError("");
+    try { await logout(); onClose(); }
+    catch (err) { setError(err instanceof Error ? err.message : "تعذر تسجيل الخروج"); }
   };
 
   return (
@@ -64,12 +66,15 @@ export default function AccountDropdown({ user, onClose }: AccountDropdownProps)
       </div>
 
       <div className="border-t border-gray-100 py-1">
+        {error && <p role="alert" className="p-3 text-xs text-red-600">{error}</p>}
         <button
           onClick={handleLogout}
+          disabled={loggingOut}
+          aria-busy={loggingOut}
           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition"
         >
           <LogOut className="w-4 h-4" />
-          تسجيل الخروج
+          {loggingOut ? "جاري تسجيل الخروج…" : "تسجيل الخروج"}
         </button>
       </div>
     </div>

@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
       },
       body: JSON.stringify({ email }),
+      signal: AbortSignal.timeout(15000),
     });
 
     const backendData = await backendRes.json();
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     // notFound: backend found no account — still return ok so we don't leak account existence
     if (backendData.notFound) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, cooldown: 60 });
     }
 
     const otp: string = backendData._otp;
@@ -47,8 +48,9 @@ export async function POST(req: NextRequest) {
         subject: "رمز إعادة تعيين كلمة المرور | الشريحة الموثوقة",
         html: otpEmailTemplate(otp),
       });
-    } catch {
-      return NextResponse.json({ error: "فشل إرسال بريد التحقق" }, { status: 500 });
+    } catch (error) {
+      console.error("Password recovery email delivery failed:", error instanceof Error ? error.message : "unknown error");
+      return NextResponse.json({ error: "تعذر إرسال رمز التحقق الآن. حاول مجددًا بعد دقيقة.", cooldown: 60 }, { status: 503 });
     }
 
     return NextResponse.json({

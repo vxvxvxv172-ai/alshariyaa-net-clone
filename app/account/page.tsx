@@ -194,11 +194,12 @@ function InfoRow({ label, value, ltr }: { label: string; value?: string; ltr?: b
 function AccountPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, setUser, logout, initialized } = useAuthStore();
+  const { user, loading, setUser, logout, initialized, loggingOut, sessionError } = useAuthStore();
 
   const urlTab = searchParams.get("tab") === "orders" ? "orders" : "profile";
   const [tab, setTab] = useState<"profile" | "orders">(urlTab);
 
+  const [logoutError, setLogoutError] = useState("");
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -233,10 +234,10 @@ function AccountPageInner() {
   // Only redirect to login if on "profile" tab and not logged in!
   // If tab is "orders", guests can stay and track their orders!
   useEffect(() => {
-    if (initialized && !loading && !user && tab === "profile") {
+    if (initialized && !loading && !sessionError && !user && tab === "profile") {
       router.replace("/auth?redirect=/account");
     }
-  }, [initialized, loading, user, tab, router]);
+  }, [initialized, loading, sessionError, user, tab, router]);
 
   useEffect(() => {
     if (user) {
@@ -454,8 +455,9 @@ function AccountPageInner() {
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.replace("/");
+    setLogoutError("");
+    try { await logout(); router.replace("/"); }
+    catch (error) { setLogoutError(error instanceof Error ? error.message : "تعذر تسجيل الخروج"); }
   };
 
   if (!initialized || loading)
@@ -614,6 +616,7 @@ function AccountPageInner() {
 
                     {/* Change password toggle */}
                     <div className="pt-2 border-t border-gray-100">
+                  {logoutError && <p role="alert" className="mb-3 text-sm text-red-600">{logoutError}</p>}
                       <button
                         type="button"
                         onClick={() => setChangePasswordOpen(!changePasswordOpen)}
@@ -668,11 +671,14 @@ function AccountPageInner() {
                 )}
 
                 <div className="pt-2 border-t border-gray-100">
+                  {logoutError && <p role="alert" className="mb-3 text-sm text-red-600">{logoutError}</p>}
                   <button
                     onClick={handleLogout}
+                    disabled={loggingOut}
+                    aria-busy={loggingOut}
                     className="w-full py-3 text-sm font-semibold text-red-500 border border-red-100 hover:bg-red-50 transition rounded-xl"
                   >
-                    تسجيل الخروج
+                    {loggingOut ? "جاري تسجيل الخروج…" : "تسجيل الخروج"}
                   </button>
                 </div>
               </div>

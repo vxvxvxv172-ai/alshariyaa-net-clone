@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const email = (body.email || "").toLowerCase().trim();
     const otp = String(body.otp || "").trim();
-    const newPassword = String(body.newPassword || "").trim();
+    const newPassword = String(body.newPassword || "");
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "بريد إلكتروني غير صحيح" }, { status: 400 });
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
       },
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ email, otp, newPassword }),
     });
 

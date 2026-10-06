@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Mail, CheckCircle2, Pencil, ArrowLeft, RefreshCw, AlertCircle, ArrowRight } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
+import { normalizeOtp, safeAuthRedirect } from "../lib/authUx";
 import { identify, track } from "../lib/useTikTokEvents";
 
 const COOLDOWN_SECONDS = 60;
@@ -74,7 +75,7 @@ function OtpInputs({
   setOtp: (v: string[]) => void;
   error: string;
   setError: (v: string) => void;
-  onComplete?: () => void;
+  onComplete?: (code: string) => void;
   disabled?: boolean;
 }) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
@@ -90,7 +91,7 @@ function OtpInputs({
     e.preventDefault();
     if (disabled) return;
     const text = e.clipboardData.getData("text");
-    const digits = text.replace(/\D/g, "").slice(0, 6);
+    const digits = normalizeOtp(text);
     if (!digits) return;
     const next = [...otp];
     for (let i = 0; i < 6; i++) {
@@ -101,14 +102,14 @@ function OtpInputs({
     const targetFocus = Math.min(digits.length, 5);
     refs.current[targetFocus]?.focus();
     if (digits.length === 6) {
-      setTimeout(() => onComplete?.(), 50);
+      onComplete?.(next.join(""));
     }
   };
 
   const handleChange = (index: number, value: string) => {
     if (disabled) return;
     if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 6);
+      const digits = normalizeOtp(value);
       if (digits.length > 0) {
         const next = [...otp];
         for (let i = 0; i < digits.length; i++) {
@@ -119,12 +120,12 @@ function OtpInputs({
         const nextFocus = Math.min(index + digits.length, 5);
         refs.current[nextFocus]?.focus();
         if (next.every((d) => d.length === 1)) {
-          setTimeout(() => onComplete?.(), 50);
+          onComplete?.(next.join(""));
         }
         return;
       }
     }
-    const digit = value.replace(/\D/g, "").slice(-1);
+    const digit = normalizeOtp(value).slice(-1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
@@ -132,7 +133,7 @@ function OtpInputs({
     if (digit) {
       if (index < 5) refs.current[index + 1]?.focus();
       if (next.every((d) => d.length === 1)) {
-        setTimeout(() => onComplete?.(), 50);
+        onComplete?.(next.join(""));
       }
     }
   };
@@ -153,7 +154,7 @@ function OtpInputs({
       e.preventDefault();
       if (index < 5) refs.current[index + 1]?.focus();
     } else if (e.key === "Enter" && otp.every((d) => d.length === 1)) {
-      onComplete?.();
+      onComplete?.(otp.join(""));
     }
   };
 
@@ -164,6 +165,8 @@ function OtpInputs({
           key={i}
           ref={(el) => { refs.current[i] = el; }}
           type="text"
+          aria-label={`الرقم ${i + 1} من رمز التحقق`}
+          aria-invalid={!!error}
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete={i === 0 ? "one-time-code" : "off"}
@@ -232,6 +235,8 @@ function Field({
         type={type}
         autoComplete={autoComplete}
         inputMode={inputMode}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
@@ -244,7 +249,7 @@ function Field({
             : "border-[#8BA8D2] focus:border-[#284064]"
         }`}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -276,10 +281,11 @@ function Btn({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
+      aria-busy={loading}
       style={{ borderRadius: 0, ...(variant === "primary" ? { background: "var(--color-2)" } : { borderColor: "var(--color-4)" }) }}
       className={`${base} ${styles}`}
     >
-      {loading ? <Spinner /> : children}
+      {loading ? <><Spinner /><span>جاري التنفيذ…</span></> : children}
     </button>
   );
 }
@@ -424,6 +430,7 @@ function RegisterForm({
     try {
       const res = await fetch("/api/auth/register/request", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
@@ -455,14 +462,16 @@ function RegisterForm({
     }
   };
 
-  const handleVerifyOtp = async () => {
-    const code = otp.join("");
+  const handleVerifyOtp = async (completedCode?: string) => {
+    if (loading) return;
+    const code = completedCode ?? otp.join("");
     if (code.length < 6) { setOtpError("أدخل رمز التحقق كاملًا"); return; }
     setOtpError("");
     setLoading(true);
     try {
       const res = await fetch("/api/auth/register/verify", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
@@ -499,6 +508,7 @@ function RegisterForm({
     try {
       const res = await fetch("/api/auth/register/request", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
@@ -534,7 +544,7 @@ function RegisterForm({
           <p className="text-xs text-gray-500">
             أدخل رمز التحقق المكوّن من 6 أرقام المرسل إلى:
           </p>
-          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 mt-1">
+          <div className="inline-flex max-w-full items-center gap-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 mt-1">
             <span className="text-sm font-semibold text-[#284064]" dir="ltr">{email}</span>
             <button
               type="button"
@@ -553,7 +563,7 @@ function RegisterForm({
         </div>
 
         {resendSuccess && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2.5 flex items-center gap-2 justify-center text-center">
+          <div role="status" className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2.5 flex items-center gap-2 justify-center text-center">
             <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
             <span>{resendSuccess}</span>
           </div>
@@ -569,12 +579,12 @@ function RegisterForm({
         />
 
         {otpError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 text-center">
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 text-center">
             {otpError}
           </div>
         )}
 
-        <Btn onClick={handleVerifyOtp} loading={loading} disabled={otp.join("").length < 6}>
+        <Btn onClick={() => void handleVerifyOtp()} loading={loading} disabled={otp.join("").length < 6}>
           إنشاء الحساب والدخول
         </Btn>
 
@@ -697,7 +707,7 @@ function RegisterForm({
       )}
 
       {globalError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3">
+        <div id="login-error" role="alert" className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3">
           {globalError}
         </div>
       )}
@@ -753,7 +763,6 @@ function RegisterForm({
             type="button"
             onClick={() => setShowPass((v) => !v)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            tabIndex={-1}
             aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
           >
             {eyeIcon(showPass)}
@@ -779,7 +788,18 @@ function LoginForm({
   initialEmail?: string;
 }) {
   type LoginStep = "login" | "forgot-email" | "forgot-otp" | "forgot-success";
-  const [step, setStep] = useState<LoginStep>("login");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const flow = searchParams.get("flow");
+  const step: LoginStep = flow === "forgot-email" || flow === "forgot-otp" || flow === "forgot-success" ? flow : "login";
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const setStep = (next: LoginStep, replace = false) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("flow", next);
+    const url = `/auth?${params.toString()}`;
+    if (replace) router.replace(url, { scroll: false });
+    else router.push(url, { scroll: false });
+  };
 
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
@@ -797,9 +817,45 @@ function LoginForm({
   const [showNewPass, setShowNewPass] = useState(false);
   const [resendSuccess, setResendSuccess] = useState("");
 
-  const { seconds: cooldown, start: startCooldown, clear: clearCooldown } = useCountdown("auth_forgot_otp_cooldown");
+  const { seconds: cooldown, start: startCooldown, clear: clearCooldown } = useCountdown(`auth_forgot_otp_cooldown:${forgotEmail.toLowerCase().trim()}`);
 
+  const { seconds: verifyCooldown, start: startVerifyCooldown, clear: clearVerifyCooldown } = useCountdown(`auth_forgot_verify_cooldown:${forgotEmail.toLowerCase().trim()}`);
   const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem("auth_forgot_draft") || "null");
+      if (draft && typeof draft.email === "string") {
+        setForgotEmail(draft.email);
+        if (!flow && ["forgot-email", "forgot-otp", "forgot-success"].includes(draft.step)) setStep(draft.step, true);
+      }
+    } catch { /* A fresh flow still works without storage. */ }
+    setRecoveryReady(true);
+    // Restore once. Subsequent changes are driven by the URL (including Back).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!recoveryReady) return;
+    try {
+      if (step === "login") sessionStorage.removeItem("auth_forgot_draft");
+      else sessionStorage.setItem("auth_forgot_draft", JSON.stringify({ step, email: forgotEmail }));
+    } catch { /* optional draft */ }
+    if (step === "forgot-otp" && !forgotEmail) setStep("forgot-email", true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, forgotEmail, recoveryReady]);
+
+  const changeForgotEmail = () => {
+    setOtp(["", "", "", "", "", ""]);
+    setOtpError(""); setNewPassword(""); setNewPasswordError("");
+    setShowNewPass(false); setResendSuccess(""); setForgotEmailError("");
+    setStep("forgot-email");
+  };
+  const returnToLogin = () => {
+    setEmail(forgotEmail || email); setPassword(""); setError("");
+    setOtp(["", "", "", "", "", ""]); setNewPassword("");
+    setShowNewPass(false); setForgotEmailError(""); setStep("login");
+  };
 
   useEffect(() => {
     if (initialEmail) {
@@ -813,7 +869,8 @@ function LoginForm({
 
   const handleLogin = async () => {
     const trimEmail = email.toLowerCase().trim();
-    const trimPass = password.trim();
+    if (loading) return;
+    const trimPass = password;
     if (!trimEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
       setError("أدخل بريدًا إلكترونيًا صحيحًا"); return;
     }
@@ -823,6 +880,7 @@ function LoginForm({
     try {
       const res = await fetch("/api/auth/login-password", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimEmail, password: trimPass }),
       });
@@ -837,6 +895,7 @@ function LoginForm({
   };
 
   const handleForgotRequest = async () => {
+    if (loading || cooldown > 0) return;
     const trimEmail = forgotEmail.toLowerCase().trim();
     if (!trimEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimEmail)) {
       setForgotEmailError("أدخل بريدًا إلكترونيًا صحيحًا"); return;
@@ -846,6 +905,7 @@ function LoginForm({
     try {
       const res = await fetch("/api/auth/forgot/request", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimEmail }),
       });
@@ -856,6 +916,8 @@ function LoginForm({
         return;
       }
       setResendSuccess("");
+      setOtp(["", "", "", "", "", ""]); setOtpError("");
+      clearVerifyCooldown();
       setStep("forgot-otp");
       startCooldown(data.cooldown || COOLDOWN_SECONDS);
     } catch {
@@ -866,6 +928,7 @@ function LoginForm({
   };
 
   const handleForgotVerify = async () => {
+    if (loading || verifyCooldown > 0) return;
     const code = otp.join("");
     if (code.length < 6) { setOtpError("أدخل رمز التحقق كاملًا"); return; }
     if (!newPassword || newPassword.length < 6) { setNewPasswordError("كلمة المرور يجب أن تكون 6 أحرف على الأقل"); return; }
@@ -874,18 +937,21 @@ function LoginForm({
     try {
       const res = await fetch("/api/auth/forgot/verify", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail.toLowerCase().trim(), otp: code, newPassword }),
       });
       const data = await res.json();
       if (!res.ok) {
         setOtpError(data.error || "رمز التحقق غير صحيح");
+        if (data.cooldown) { startCooldown(data.cooldown); startVerifyCooldown(data.cooldown); }
         if (data.code === "EXPIRED" || data.code === "MAX_ATTEMPTS") {
           setOtp(["", "", "", "", "", ""]);
         }
         return;
       }
-      clearCooldown();
+      clearCooldown(); clearVerifyCooldown();
+      setPassword(""); setNewPassword(""); setOtp(["", "", "", "", "", ""]);
       setStep("forgot-success");
     } catch {
       setOtpError("حدث خطأ، حاول مرة أخرى");
@@ -903,6 +969,7 @@ function LoginForm({
     try {
       const res = await fetch("/api/auth/forgot/request", {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: forgotEmail.toLowerCase().trim() }),
       });
@@ -912,7 +979,8 @@ function LoginForm({
         if (data.cooldown) startCooldown(data.cooldown);
         return;
       }
-      setResendSuccess("تم إرسال رمز تحقق جديد إلى بريدك بنجاح");
+      clearVerifyCooldown();
+      setResendSuccess("إذا كان البريد مرتبطًا بحساب، ستصلك رسالة برمز تحقق جديد.");
       startCooldown(data.cooldown || COOLDOWN_SECONDS);
     } catch {
       setOtpError("حدث خطأ، حاول مرة أخرى");
@@ -921,9 +989,7 @@ function LoginForm({
     }
   };
 
-  const maskedForgotEmail = forgotEmail
-    ? forgotEmail.replace(/(.{2})(.*)(@.*)/, (_, a, b, c) => a + "*".repeat(Math.min(b.length, 4)) + c)
-    : "";
+  if (!recoveryReady) return <p role="status" className="text-center text-sm text-[#60758E]">جاري التحميل…</p>;
 
   // ── Forgot success ──
   if (step === "forgot-success") {
@@ -936,7 +1002,7 @@ function LoginForm({
           <p className="font-semibold text-base" style={{ color: "var(--color-2)" }}>تم تغيير كلمة المرور</p>
           <p className="text-sm mt-1" style={{ color: "var(--color-3)" }}>يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة</p>
         </div>
-        <Btn onClick={() => { setStep("login"); setForgotEmail(""); setOtp(["","","","","",""]); setNewPassword(""); }}>
+        <Btn onClick={returnToLogin}>
           العودة لتسجيل الدخول
         </Btn>
       </div>
@@ -952,12 +1018,13 @@ function LoginForm({
             <Mail className="w-7 h-7" />
           </div>
           <p className="text-lg font-bold text-[#284064]">تحقق من بريدك الإلكتروني</p>
-          <p className="text-xs text-gray-500">أرسلنا رمز تحقق لإعادة تعيين كلمة المرور إلى:</p>
-          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 mt-1">
-            <span className="text-sm font-semibold text-[#284064]" dir="ltr">{maskedForgotEmail}</span>
+          <p className="text-xs text-gray-500">إذا كان البريد التالي مرتبطًا بحساب، ستصلك رسالة برمز التحقق:</p>
+          <div className="inline-flex max-w-full items-center gap-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 mt-1">
+            <span className="min-w-0 break-all text-sm font-semibold text-[#284064]" dir="ltr">{forgotEmail}</span>
             <button
               type="button"
-              onClick={() => { setStep("forgot-email"); setResendSuccess(""); setOtpError(""); }}
+              onClick={changeForgotEmail}
+              disabled={loading}
               className="text-xs text-[#9a6d38] hover:text-[#284064] font-medium underline inline-flex items-center gap-1 transition-colors"
               title="تغيير البريد"
             >
@@ -968,15 +1035,16 @@ function LoginForm({
         </div>
 
         {resendSuccess && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2.5 flex items-center gap-2 justify-center text-center">
+          <div role="status" className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2.5 flex items-center gap-2 justify-center text-center">
             <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
             <span>{resendSuccess}</span>
           </div>
         )}
 
-        <OtpInputs otp={otp} setOtp={setOtp} error={otpError} setError={setOtpError} disabled={loading} />
+        <OtpInputs otp={otp} setOtp={setOtp} error={otpError} setError={setOtpError} disabled={loading || verifyCooldown > 0} />
+        {verifyCooldown > 0 && <p role="status" className="text-center text-xs text-amber-700">يمكنك طلب رمز جديد بعد {formatTimer(verifyCooldown)}</p>}
         {otpError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 text-center">
+          <div role="alert" className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-2 text-center">
             {otpError}
           </div>
         )}
@@ -988,6 +1056,8 @@ function LoginForm({
           <div className="relative">
             <input
               id="new-password"
+              aria-invalid={!!newPasswordError}
+              aria-describedby={newPasswordError ? "new-password-error" : undefined}
               type={showNewPass ? "text" : "password"}
               autoComplete="new-password"
               value={newPassword}
@@ -1003,8 +1073,7 @@ function LoginForm({
               type="button"
               onClick={() => setShowNewPass((v) => !v)}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              tabIndex={-1}
-              aria-label={showNewPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
+                aria-label={showNewPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
             >
               {showNewPass ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1018,17 +1087,18 @@ function LoginForm({
               )}
             </button>
           </div>
-          {newPasswordError && <p className="text-xs text-red-500">{newPasswordError}</p>}
+          {newPasswordError && <p id="new-password-error" role="alert" className="text-xs text-red-500">{newPasswordError}</p>}
         </div>
 
-        <Btn onClick={handleForgotVerify} loading={loading} disabled={otp.join("").length < 6 || !newPassword}>
+        <Btn onClick={handleForgotVerify} loading={loading} disabled={verifyCooldown > 0 || otp.join("").length < 6 || !newPassword}>
           تغيير كلمة المرور
         </Btn>
 
         <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-100">
           <button
             type="button"
-            onClick={() => { setStep("forgot-email"); setResendSuccess(""); setOtp(["","","","","",""]); setOtpError(""); setNewPassword(""); }}
+            onClick={changeForgotEmail}
+              disabled={loading}
             className="text-[#284064] hover:text-[#9a6d38] font-medium transition-colors"
           >
             تغيير البريد
@@ -1080,12 +1150,13 @@ function LoginForm({
           onKeyDown={(e) => e.key === "Enter" && !loading && handleForgotRequest()}
         />
 
-        <Btn onClick={handleForgotRequest} loading={loading}>
-          إرسال رمز التحقق
+        <Btn onClick={handleForgotRequest} loading={loading} disabled={cooldown > 0}>
+          {cooldown > 0 ? `إعادة الإرسال بعد ${formatTimer(cooldown)}` : "إرسال رمز التحقق"}
         </Btn>
 
         <button
-          onClick={() => { setStep("login"); setForgotEmail(""); setForgotEmailError(""); }}
+          onClick={returnToLogin}
+          disabled={loading}
           className="w-full text-sm transition-colors text-center hover:opacity-70"
           style={{ color: "var(--color-3)" }}
         >
@@ -1099,7 +1170,7 @@ function LoginForm({
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3">
+        <div id="login-error" role="alert" className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3">
           {error}
         </div>
       )}
@@ -1125,7 +1196,7 @@ function LoginForm({
           </label>
           <button
             type="button"
-            onClick={() => { setStep("forgot-email"); setForgotEmail(email); }}
+            onClick={() => { setStep("forgot-email"); if (!forgotEmail) setForgotEmail(email); setError(""); }}
             className="text-xs text-[#284064] hover:text-[#9a6d38] transition-colors font-medium"
           >
             نسيت كلمة السر؟
@@ -1134,6 +1205,8 @@ function LoginForm({
         <div className="relative">
           <input
             id="login-password"
+            aria-invalid={!!error}
+            aria-describedby={error ? "login-error" : undefined}
             type={showPass ? "text" : "password"}
             autoComplete="current-password"
             value={password}
@@ -1149,7 +1222,6 @@ function LoginForm({
             type="button"
             onClick={() => setShowPass((v) => !v)}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-            tabIndex={-1}
             aria-label={showPass ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
           >
             {showPass ? (
@@ -1183,7 +1255,12 @@ function AuthPageInner() {
   const searchParams = useSearchParams();
   const { user, initialized, setUser } = useAuthStore();
 
-  const [tab, setTab] = useState<Tab>("login");
+  const tab: Tab = searchParams.get("tab") === "register" ? "register" : "login";
+  const setTab = (next: Tab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", next);
+    router.push(`/auth?${params.toString()}`, { scroll: false });
+  };
   const [loginPrefilledEmail, setLoginPrefilledEmail] = useState("");
 
   const defaultRegisterState: RegisterState = {
@@ -1223,10 +1300,7 @@ function AuthPageInner() {
   useEffect(() => {
     if (initialized && user) {
       const redirect = searchParams.get("redirect");
-      const safe =
-        redirect && redirect.startsWith("/") && !redirect.startsWith("//")
-          ? redirect
-          : "/account";
+      const safe = safeAuthRedirect(redirect);
       router.replace(safe);
     }
   }, [initialized, user, router, searchParams]);
@@ -1237,12 +1311,9 @@ function AuthPageInner() {
       identify();
       track("CompleteRegistration", { contents: [], value: 0, currency: "SAR" });
     }
-    try { sessionStorage.removeItem(REGISTER_STORAGE_KEY); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(REGISTER_STORAGE_KEY); sessionStorage.removeItem("auth_forgot_draft"); } catch { /* ignore */ }
     const redirect = searchParams.get("redirect");
-    const safe =
-      redirect && redirect.startsWith("/") && !redirect.startsWith("//")
-        ? redirect
-        : "/account";
+    const safe = safeAuthRedirect(redirect);
     router.replace(safe);
   };
 
@@ -1261,7 +1332,7 @@ function AuthPageInner() {
         <div className="flex flex-col items-center mb-8 gap-3">
           <Image
             src="/logo.webp"
-            alt="لمسة"
+            alt="الشريحة الموثوقة"
             width={260}
             height={104}
             className="object-contain h-24 w-auto"
@@ -1290,13 +1361,14 @@ function AuthPageInner() {
           ))}
         </div>
 
-        {tab === "login" ? (
+        <div hidden={tab !== "login"}>
           <LoginForm
             key="login"
             onSuccess={handleSuccess}
             initialEmail={loginPrefilledEmail}
           />
-        ) : (
+        </div>
+        {tab === "register" && (
           <RegisterForm
             key="register"
             onSuccess={handleSuccess}

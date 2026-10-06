@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const email = (body.email || "").toLowerCase().trim();
-    const password = String(body.password || "").trim();
+    const password = String(body.password || "");
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "أدخل بريدًا إلكترونيًا صحيحًا" }, { status: 400 });
@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         "x-internal-secret": process.env.INTERNAL_SECRET || "",
       },
+      signal: AbortSignal.timeout(15000),
       body: JSON.stringify({ email, password }),
     });
 

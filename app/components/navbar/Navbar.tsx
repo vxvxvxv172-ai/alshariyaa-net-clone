@@ -4,6 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { safeAuthRedirect } from "../../lib/authUx";
 import { navItems } from "./data";
 import { Menu, X, User } from "lucide-react";
 import { IoBagHandleOutline } from "react-icons/io5";
@@ -52,7 +53,7 @@ export default function Navbar() {
     if (user) {
       router.push("/account");
     } else {
-      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`);
+      router.push(`/auth?redirect=${encodeURIComponent(safeAuthRedirect(pathname + window.location.search + window.location.hash))}`);
     }
   };
 
