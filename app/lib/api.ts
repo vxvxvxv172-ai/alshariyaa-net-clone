@@ -9,6 +9,7 @@ const ALLOWED_HOSTS = [
   "lamsa-simicard-backend-production.up.railway.app",
   "alshareehaa-backend.vercel.app",
   "alshareehasim-backend.vercel.app",
+  "alshareehasim-backend.onrender.com",
   "alsharihaa.com",
   "www.alsharihaa.com",
 ];
