@@ -3,10 +3,16 @@ import { getBackend } from "../admin/_lib";
 
 export async function GET() {
   const res = await fetch(`${getBackend()}/api/admin/reviews`, {
-    next: { revalidate: 300 },
+    next: { revalidate: 3600 },
   });
   const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  return NextResponse.json(data, {
+    status: res.status,
+    headers: {
+      // Reviews rarely change — cache at Edge for 1 hour
+      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -17,5 +23,8 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  return NextResponse.json(data, {
+    status: res.status,
+    headers: { "Cache-Control": "private, no-store" },
+  });
 }

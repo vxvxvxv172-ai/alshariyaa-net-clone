@@ -213,7 +213,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         {/* End Google Tag Manager (noscript) */}
         <SnapPixel />
-        <ClientLayout footer={<Footer />} whatsapp={c.whatsapp}>
+        <ClientLayout footer={<Footer />} company={c}>
           {children}
         </ClientLayout>
         <div
