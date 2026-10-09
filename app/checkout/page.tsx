@@ -14,6 +14,7 @@ import CustomerSection, { validateCustomer } from "./CustomerSection";
 import type { CustomerData } from "./CustomerSection";
 import { useAuthStore } from "../store/authStore";
 import { identify, track } from "../lib/useTikTokEvents";
+import { pushBeginCheckout } from "../lib/gtmEvents";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -98,6 +99,19 @@ export default function CheckoutPage() {
       contents: items.map(i => ({ content_id: i.product._id, content_type: "product" as const, content_name: i.product.name })),
       value: Math.max(0, totalPrice() - discount),
       currency: "SAR",
+    });
+    // ── Google Ads / GA4: begin_checkout ─────────────────
+    pushBeginCheckout({
+      currency: "SAR",
+      value: Math.max(0, totalPrice() - discount),
+      items: items.map(i => ({
+        item_id: i.product._id,
+        item_name: i.product.name,
+        price: i.product.salePrice ?? i.product.originalPrice ?? i.product.price,
+        quantity: i.qty,
+        item_brand: i.product.brand,
+        item_category: i.product.category,
+      })),
     });
   }, [mounted]);
 

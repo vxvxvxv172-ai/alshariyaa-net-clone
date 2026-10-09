@@ -9,6 +9,7 @@ import type { CustomerInfo } from "../store/cartStore";
 import { useAuthStore } from "../store/authStore";
 import CartItem from "./components/CartItem";
 import AnimatedBackground from "../components/AnimatedBackground";
+import { pushPurchase } from "../lib/gtmEvents";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -63,6 +64,20 @@ export default function CartPage() {
     setLoading(false);
     setCustomer({ name, nationalId, whatsapp, address, installmentType: "full", months: 0, downPayment: 0 });
     setShowModal(false);
+    // ── Google Ads / GA4: purchase (Cash on Delivery) ────
+    pushPurchase({
+      transaction_id: `cod_${Date.now()}`,
+      currency: "SAR",
+      value: total,
+      items: items.map(i => ({
+        item_id: i.product._id,
+        item_name: i.product.name,
+        price: i.product.salePrice ?? i.product.originalPrice ?? i.product.price,
+        quantity: i.qty,
+        item_brand: i.product.brand,
+        item_category: i.product.category,
+      })),
+    });
     setShowPopup(true);
   };
 

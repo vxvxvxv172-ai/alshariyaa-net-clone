@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, CheckCircle } from "lucide-react";
 import { useCartStore } from "../../store/cartStore";
 import { identify, track } from "../../lib/useTikTokEvents";
+import { pushPurchase } from "../../lib/gtmEvents";
 import { OrderTracker } from "../../components/OrderTracker";
 
 const fmt = (n: number) => n.toLocaleString("ar-SA");
@@ -121,6 +122,18 @@ export default function VerifyPage() {
       contents: (verifyData.items || []).map(i => ({ content_id: i.productId || "", content_type: "product" as const, content_name: i.name })),
       value: verifyData.amount,
       currency: "SAR",
+    });
+    // ── Google Ads / GA4: purchase ───────────────────────
+    pushPurchase({
+      transaction_id: verifyData.orderId || verifyData._id || `ord_${Date.now()}`,
+      currency: "SAR",
+      value: verifyData.amount,
+      items: (verifyData.items || []).map(i => ({
+        item_id: i.productId || "",
+        item_name: i.name,
+        price: i.price,
+        quantity: i.quantity,
+      })),
     });
     clear();
     sessionStorage.removeItem("verify_data");

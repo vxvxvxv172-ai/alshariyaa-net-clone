@@ -12,6 +12,7 @@ import {
 import type { Product } from "./types";
 import { useCartStore } from "../../store/cartStore";
 import { useCartPopupStore } from "../../store/cartPopupStore";
+import { pushAddToCart } from "../../lib/gtmEvents";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const resolveImgUrl = (src: string) => {
@@ -62,6 +63,23 @@ export default function ProductCard({
 
     // addItem is synchronous (Zustand local store)
     addItem(product);
+
+    // ── Google Ads / GA4: add_to_cart ────────────────────
+    pushAddToCart({
+      currency: "SAR",
+      value: displayPrice ?? 0,
+      items: [
+        {
+          item_id: product._id,
+          item_name: product.name,
+          price: displayPrice ?? 0,
+          quantity: 1,
+          item_brand: product.brand,
+          item_category: product.category,
+          discount: hasDiscount ? originalPrice - (displayPrice ?? 0) : undefined,
+        },
+      ],
+    });
 
     setLoading(false);
     setAdded(true);
