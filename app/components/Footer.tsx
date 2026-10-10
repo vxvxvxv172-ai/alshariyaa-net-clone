@@ -2,48 +2,8 @@ import Image from "next/image";
 import { FaWhatsapp, FaMobileAlt, FaEnvelope } from "react-icons/fa";
 import { getCompany } from "../lib/getCompany";
 
-function ensureAbsolute(url: string) {
-  if (!url) return "";
-  return url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
-}
-
-function footerImageUrl(src: string) {
-  if (!src) return "";
-  if (!src.startsWith("https://res.cloudinary.com/")) return src;
-  return src.replace("/image/upload/", "/image/upload/e_trim/");
-}
-
-function toInlineUrl(url: string) {
-  if (!url) return url;
-  const rawUrl = url.replace("/image/upload/", "/raw/upload/").replace(/\/fl_attachment:[^/]+\//, "/");
-  return `https://docs.google.com/viewer?url=${encodeURIComponent(rawUrl)}&embedded=false`;
-}
-
 export default async function Footer() {
   const c = await getCompany();
-
-  const footerItems: { number?: string; image: string; linkType: string; link: string; file: string }[] =
-    (c.footerItems || []).filter((item: { image: string }) => item.image);
-
-  const img1: string = c.img1 || "";
-  const useFile1 = c.link1Type === "file" || (!!(c.file1 || "").trim() && !(c.link1 || "").trim());
-  const link1: string = useFile1 ? toInlineUrl(c.file1 || "") : ensureAbsolute(c.link1 || "");
-
-  const img2: string = c.img2 || "";
-  const useFile2 = c.link2Type === "file" || (!!(c.file2 || "").trim() && !(c.link2 || "").trim());
-  const link2: string = useFile2 ? toInlineUrl(c.file2 || "") : ensureAbsolute(c.link2 || "");
-
-  function getHref(item: { linkType: string; link: string; file: string }) {
-    const asFile = item.linkType === "file" || (!!(item.file || "").trim() && !(item.link || "").trim());
-    return asFile ? toInlineUrl(item.file) : ensureAbsolute(item.link);
-  }
-
-  const paymentImages = [
-    ...(c.qrImage ? [{ src: c.qrImage, href: ensureAbsolute(c.qrLink || ""), number: "" }] : []),
-    ...(img1 ? [{ src: img1, href: link1, number: c.number1 || "" }] : []),
-    ...(img2 ? [{ src: img2, href: link2, number: c.number2 || "" }] : []),
-    ...footerItems.map((item) => ({ src: item.image, href: getHref(item), number: item.number || "" })),
-  ];
 
   return (
     <footer dir="rtl" className="mt-16 border-t border-gray-200" style={{ background: "#F3F4F6" }}>
@@ -59,6 +19,25 @@ export default async function Footer() {
             <p className="text-sm leading-7 text-gray-600 whitespace-pre-line">
               {c.details || "الشريحة الموثوقة - شرائح اتصال وإنترنت بأسعار منافسة، مع خدمة سريعة وآمنة ودعم عملاء مميز. ثقتكم غايتنا وخدمتكم أولويتنا"}
             </p>
+
+            {/* السجل التجاري */}
+            <div className="flex items-center gap-2.5 mt-1">
+              <Image src="/commerce.webp" alt="السجل التجاري" width={52} height={52} className="object-contain shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-700">السجل التجاري</span>
+                <span dir="ltr" className="text-xs text-gray-500 tabular-nums">315051473900003</span>
+              </div>
+            </div>
+
+            {/* شهادة التوثيق */}
+            <div className="flex items-center gap-2.5">
+              <Image src="/work.webp" alt="شهادة التوثيق" width={52} height={52} className="object-contain shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-gray-700">شهادة التوثيق</span>
+                <span className="text-xs text-gray-500">مركز الاعمال</span>
+                <span dir="ltr" className="text-xs text-gray-500 tabular-nums">0000331902</span>
+              </div>
+            </div>
           </div>
 
           {/* Contact details */}
@@ -66,6 +45,7 @@ export default async function Footer() {
             <h3 className="text-base font-bold text-black">تواصل معنا</h3>
 
             <ul className="flex flex-col gap-3">
+
               {c.whatsapp && (
                 <li>
                   <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
@@ -100,30 +80,19 @@ export default async function Footer() {
                 </li>
               )}
             </ul>
+
+            {/* شعار ضريبة القيمة المضافة */}
+            <a href="/qema.pdf" target="_blank" rel="noreferrer" className="inline-block mt-2 w-fit">
+              <Image
+                src="/شعار ضريبة القيمة المضافة بدقة عالية svg - png (1).png"
+                alt="شهادة ضريبة القيمة المضافة"
+                width={65}
+                height={65}
+                className="object-contain"
+              />
+            </a>
           </div>
         </div>
-
-        {/* Payment / Certification Images */}
-        {paymentImages.length > 0 && (
-          <div className="mt-5 mb-6 flex flex-wrap items-start justify-center gap-x-5 gap-y-4 sm:justify-end">
-            {paymentImages.map(({ src, href, number }, i) => (
-              <div key={i} className="flex w-[65px] shrink-0 flex-col items-center gap-1.5 text-center">
-                {href ? (
-                  <a href={href} target="_blank" rel="noreferrer" className="shrink-0">
-                    <Image src={footerImageUrl(src)} alt={`وسيلة توثيق ${i + 1}`} width={65} height={40} className="object-contain" style={{ width: 65, height: 40 }} />
-                  </a>
-                ) : (
-                  <Image src={footerImageUrl(src)} alt={`وسيلة توثيق ${i + 1}`} width={65} height={40} className="object-contain shrink-0" style={{ width: 65, height: 40 }} />
-                )}
-                {number && (
-                  <span dir="ltr" className="block w-full break-all text-[10px] leading-4 font-medium tabular-nums text-gray-500">
-                    {number}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Divider */}
         <div className="h-px w-full bg-gray-200 mb-6" />
