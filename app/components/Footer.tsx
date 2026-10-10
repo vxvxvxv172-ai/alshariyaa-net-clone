@@ -25,7 +25,7 @@ export default async function Footer() {
               <Image src="/commerce.webp" alt="السجل التجاري" width={52} height={52} className="object-contain shrink-0" />
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-gray-700">السجل التجاري</span>
-                <span dir="ltr" className="text-xs text-gray-500 tabular-nums">315051473900003</span>
+                <span dir="ltr" className="text-xs text-gray-500 tabular-nums">7055339530</span>
               </div>
             </div>
 
