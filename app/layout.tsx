@@ -118,7 +118,7 @@ export async function generateMetadata(): Promise<Metadata> {
       languages: { "ar-SA": SITE_URL },
     },
     verification: {
-      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+      google: "qnIBTn6iSyGB8-lV_1qJy0wSw4t7cJaetXEZh1OrzOk",
     },
     category: "electronics",
     other: {
