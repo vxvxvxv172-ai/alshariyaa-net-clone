@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import TikTokPixel from "./components/TikTokPixel";
-import SnapPixel from "./components/SnapPixel";
 import "./globals.css";
 import ClientLayout from "./components/ClientLayout";
 import Footer from "./components/Footer";
@@ -9,7 +8,7 @@ import { getCompany } from "./lib/getCompany";
 import { Analytics } from "@vercel/analytics/next";
 
 // Single source of truth for the production domain
-const SITE_URL = "https://www.alshariyaa.com";
+const SITE_URL = "https://www.alshareehanet.com";
 
 export const viewport: Viewport = {
   themeColor: "#04454A",
@@ -197,6 +196,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         )}
 
         <TikTokPixel />
+
+        {/* Snap Pixel */}
+        <Script id="snap-pixel" strategy="afterInteractive">
+          {`(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';var r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');
+snaptr('init', '8633abbf-aec5-49a4-8585-eaa8665adc23', {'user_email': '__INSERT_USER_EMAIL__'});
+snaptr('track', 'PAGE_VIEW');`}
+        </Script>
       </head>
       <body
         className="antialiased"
@@ -212,7 +218,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
-        <SnapPixel />
         <ClientLayout footer={<Footer />} company={c}>
           {children}
         </ClientLayout>
