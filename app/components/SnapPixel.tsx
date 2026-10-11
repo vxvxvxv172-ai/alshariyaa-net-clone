@@ -10,6 +10,8 @@ export default function SnapPixel() {
       dangerouslySetInnerHTML={{
         __html: `(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';var r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');
 snaptr('init', 'b1332f62-8968-4e0d-a4a1-767e4b121ed3', {});
+snaptr('track', 'PAGE_VIEW');
+snaptr('init', '8633abbf-aec5-49a4-8585-eaa8665adc23', {});
 snaptr('track', 'PAGE_VIEW');`,
       }}
     />
