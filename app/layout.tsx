@@ -139,13 +139,21 @@ export default async function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
-        {/* Google Tag Manager */}
+        {/* Google Tag Manager — Container 1 */}
         <Script id="google-tag-manager" strategy="beforeInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
 })(window,document,'script','dataLayer','GTM-NSC7CM78');`}
+        </Script>
+        {/* Google Tag Manager — Container 2 */}
+        <Script id="google-tag-manager-2" strategy="beforeInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-KB4BDRCC');`}
         </Script>
         {/* End Google Tag Manager */}
 
@@ -211,6 +219,14 @@ snaptr('track','PAGE_VIEW');`}
         <noscript>
           <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-NSC7CM78"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-KB4BDRCC"
             height="0"
             width="0"
             style={{ display: "none", visibility: "hidden" }}
