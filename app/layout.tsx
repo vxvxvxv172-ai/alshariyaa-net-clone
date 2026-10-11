@@ -200,7 +200,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* Snap Pixel */}
         <Script id="snap-pixel" strategy="afterInteractive">
           {`(function(e,t,n){if(e.snaptr)return;var a=e.snaptr=function(){a.handleRequest?a.handleRequest.apply(a,arguments):a.queue.push(arguments)};a.queue=[];var s='script';var r=t.createElement(s);r.async=!0;r.src=n;var u=t.getElementsByTagName(s)[0];u.parentNode.insertBefore(r,u);})(window,document,'https://sc-static.net/scevent.min.js');
-snaptr('init', '8633abbf-aec5-49a4-8585-eaa8665adc23', {'user_email': '__INSERT_USER_EMAIL__'});
+snaptr('init', '8633abbf-aec5-49a4-8585-eaa8665adc23', {});
 snaptr('track', 'PAGE_VIEW');`}
         </Script>
       </head>
